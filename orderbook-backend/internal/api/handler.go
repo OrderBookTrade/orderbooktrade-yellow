@@ -6,18 +6,21 @@ import (
 
 	"orderbook-backend/internal/config"
 	"orderbook-backend/internal/engine"
+	"orderbook-backend/internal/market"
 	"orderbook-backend/internal/state"
 	"orderbook-backend/internal/yellow"
 )
 
 // Server holds all dependencies for the HTTP server
 type Server struct {
-	cfg          *config.Config
-	orderbook    *engine.Orderbook
-	yellowClient *yellow.Client
-	sessions     *yellow.SessionManager
-	allocations  *state.Allocations
-	wsHub        *Hub
+	cfg           *config.Config
+	orderbook     *engine.Orderbook
+	yellowClient  *yellow.Client
+	sessions      *yellow.SessionManager
+	allocations   *state.Allocations
+	wsHub         *Hub
+	marketManager *market.Manager
+	positions     *engine.PositionManager
 }
 
 // NewServer creates a new API server
@@ -26,13 +29,17 @@ func NewServer(
 	orderbook *engine.Orderbook,
 	yellowClient *yellow.Client,
 	sessions *yellow.SessionManager,
+	marketManager *market.Manager,
+	positions *engine.PositionManager,
 ) *Server {
 	return &Server{
-		cfg:          cfg,
-		orderbook:    orderbook,
-		yellowClient: yellowClient,
-		sessions:     sessions,
-		wsHub:        NewHub(),
+		cfg:           cfg,
+		orderbook:     orderbook,
+		yellowClient:  yellowClient,
+		sessions:      sessions,
+		wsHub:         NewHub(),
+		marketManager: marketManager,
+		positions:     positions,
 	}
 }
 
@@ -46,11 +53,22 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	// Health check
 	mux.HandleFunc("GET /api/health", s.handleHealth)
 
+	// Market endpoints (prediction market)
+	mux.HandleFunc("POST /api/market", s.handleCreateMarket)
+	mux.HandleFunc("GET /api/markets", s.handleListMarkets)
+	mux.HandleFunc("GET /api/market/{id}", s.handleGetMarket)
+	mux.HandleFunc("POST /api/market/{id}/resolve", s.handleResolveMarket)
+
 	// Order endpoints
 	mux.HandleFunc("POST /api/order", s.handlePlaceOrder)
 	mux.HandleFunc("GET /api/orderbook", s.handleGetOrderbook)
 	mux.HandleFunc("DELETE /api/order/{id}", s.handleCancelOrder)
 	mux.HandleFunc("GET /api/trades", s.handleGetTrades)
+
+	// Position endpoints
+	mux.HandleFunc("GET /api/position/{userId}", s.handleGetPosition)
+	mux.HandleFunc("POST /api/deposit", s.handleDeposit)
+	mux.HandleFunc("POST /api/mint", s.handleMintShares)
 
 	// Session endpoints
 	mux.HandleFunc("POST /api/session", s.handleCreateSession)

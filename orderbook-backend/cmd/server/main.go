@@ -10,12 +10,13 @@ import (
 	"orderbook-backend/internal/api"
 	"orderbook-backend/internal/config"
 	"orderbook-backend/internal/engine"
+	"orderbook-backend/internal/market"
 	"orderbook-backend/internal/yellow"
 )
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Println("Starting Orderbook Backend...")
+	log.Println("Starting Orderbook Backend (Prediction Market Mode)...")
 
 	// Load configuration
 	cfg := config.Load()
@@ -23,6 +24,15 @@ func main() {
 	// Initialize matching engine
 	orderbook := engine.NewOrderbook()
 	log.Println("Matching engine initialized")
+
+	// Initialize market manager (prediction markets)
+	marketManager := market.NewManager()
+	lifecycleManager := market.NewLifecycleManager(marketManager)
+	log.Println("Market manager initialized")
+
+	// Initialize position manager
+	positions := engine.NewPositionManager()
+	log.Println("Position manager initialized")
 
 	// Initialize Yellow Network client (optional - only if private key is set)
 	var yellowClient *yellow.Client
@@ -54,7 +64,11 @@ func main() {
 	}
 
 	// Initialize API server
-	server := api.NewServer(cfg, orderbook, yellowClient, sessions)
+	server := api.NewServer(cfg, orderbook, yellowClient, sessions, marketManager, positions)
+
+	// Start lifecycle manager (auto-lock markets when resolution time passes)
+	ctx, cancel := context.WithCancel(context.Background())
+	lifecycleManager.Start(ctx)
 
 	// Handle graceful shutdown
 	go func() {
@@ -63,6 +77,8 @@ func main() {
 		<-sigChan
 
 		log.Println("Shutting down...")
+		cancel()
+		lifecycleManager.Stop()
 		if yellowClient != nil {
 			yellowClient.Close()
 		}

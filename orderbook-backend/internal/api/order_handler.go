@@ -9,10 +9,12 @@ import (
 
 // PlaceOrderRequest is the request body for placing an order
 type PlaceOrderRequest struct {
-	UserID   string `json:"user_id"`
-	Side     string `json:"side"`  // "buy" or "sell"
-	Price    uint64 `json:"price"` // 0-10000 basis points
-	Quantity uint64 `json:"quantity"`
+	UserID    string `json:"user_id"`
+	MarketID  string `json:"market_id"`
+	OutcomeID string `json:"outcome_id"` // "YES" or "NO"
+	Side      string `json:"side"`       // "buy" or "sell"
+	Price     uint64 `json:"price"`      // 0-10000 basis points (0-100% probability)
+	Quantity  uint64 `json:"quantity"`   // Number of shares
 }
 
 // PlaceOrderResponse is the response for a placed order
@@ -29,6 +31,17 @@ func (s *Server) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate market exists and is trading
+	market, ok := s.marketManager.Get(req.MarketID)
+	if !ok {
+		writeError(w, http.StatusNotFound, "market not found")
+		return
+	}
+	if market.Status != 0 { // StatusTrading = 0
+		writeError(w, http.StatusBadRequest, "market is not accepting orders")
+		return
+	}
+
 	// Validate side
 	var side engine.Side
 	switch req.Side {
@@ -41,14 +54,37 @@ func (s *Server) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Validate outcome
+	var outcome engine.OutcomeID
+	switch req.OutcomeID {
+	case "YES":
+		outcome = engine.OutcomeYes
+	case "NO":
+		outcome = engine.OutcomeNo
+	default:
+		writeError(w, http.StatusBadRequest, "invalid outcome_id: must be 'YES' or 'NO'")
+		return
+	}
+
 	// Create order
-	order := engine.NewOrder(req.UserID, side, req.Price, req.Quantity)
+	order := engine.NewOrder(req.UserID, req.MarketID, outcome, side, req.Price, req.Quantity)
+
+	// Validate user can place this order (has balance/shares)
+	if err := s.positions.ValidateOrder(order); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	// Place order and get trades
 	trades, err := s.orderbook.PlaceOrder(order)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
+	}
+
+	// Execute trades (update positions)
+	for _, trade := range trades {
+		s.positions.ExecuteTrade(trade)
 	}
 
 	// Broadcast orderbook update

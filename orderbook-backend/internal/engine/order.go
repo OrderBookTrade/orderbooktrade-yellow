@@ -15,6 +15,14 @@ const (
 	SideSell Side = "sell"
 )
 
+// OutcomeID represents the outcome being traded
+type OutcomeID string
+
+const (
+	OutcomeYes OutcomeID = "YES"
+	OutcomeNo  OutcomeID = "NO"
+)
+
 // OrderStatus represents the current status of an order
 type OrderStatus string
 
@@ -29,9 +37,11 @@ const (
 type Order struct {
 	ID          string      `json:"id"`
 	UserID      string      `json:"user_id"`
+	MarketID    string      `json:"market_id"`  // Prediction market ID
+	OutcomeID   OutcomeID   `json:"outcome_id"` // YES or NO
 	Side        Side        `json:"side"`
-	Price       uint64      `json:"price"`      // Price in basis points (0-10000 for 0-1.00 USDC)
-	Quantity    uint64      `json:"quantity"`   // Total quantity
+	Price       uint64      `json:"price"`      // Price in basis points (0-10000 for 0.00-1.00 probability)
+	Quantity    uint64      `json:"quantity"`   // Total quantity (shares)
 	FilledQty   uint64      `json:"filled_qty"` // Already filled quantity
 	Status      OrderStatus `json:"status"`
 	Timestamp   time.Time   `json:"timestamp"`
@@ -41,10 +51,12 @@ type Order struct {
 var orderSequence uint64
 
 // NewOrder creates a new order with auto-generated ID and timestamp
-func NewOrder(userID string, side Side, price, quantity uint64) *Order {
+func NewOrder(userID, marketID string, outcomeID OutcomeID, side Side, price, quantity uint64) *Order {
 	return &Order{
 		ID:          uuid.New().String(),
 		UserID:      userID,
+		MarketID:    marketID,
+		OutcomeID:   outcomeID,
 		Side:        side,
 		Price:       price,
 		Quantity:    quantity,

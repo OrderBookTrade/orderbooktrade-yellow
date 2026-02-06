@@ -5,12 +5,14 @@ import { placeOrder } from '@/lib/api';
 
 interface OrderFormProps {
     userId: string;
+    marketId: string;
     selectedPrice?: number;
     onOrderPlaced?: () => void;
 }
 
-export function OrderForm({ userId, selectedPrice, onOrderPlaced }: OrderFormProps) {
+export function OrderForm({ userId, marketId, selectedPrice, onOrderPlaced }: OrderFormProps) {
     const [side, setSide] = useState<'buy' | 'sell'>('buy');
+    const [outcome, setOutcome] = useState<'YES' | 'NO'>('YES');
     const [price, setPrice] = useState(selectedPrice?.toString() || '50');
     const [quantity, setQuantity] = useState('10');
     const [loading, setLoading] = useState(false);
@@ -26,6 +28,9 @@ export function OrderForm({ userId, selectedPrice, onOrderPlaced }: OrderFormPro
     const yesPrice = parseFloat(price) || 0;
     const noPrice = 100 - yesPrice;
 
+    // Display the effective price based on outcome selection
+    const effectivePrice = outcome === 'YES' ? yesPrice : noPrice;
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setError(null);
@@ -33,7 +38,10 @@ export function OrderForm({ userId, selectedPrice, onOrderPlaced }: OrderFormPro
         setLoading(true);
 
         try {
-            const priceValue = Math.round(parseFloat(price) * 100); // Convert to basis points
+            // Convert to basis points based on outcome
+            const priceValue = outcome === 'YES'
+                ? Math.round(parseFloat(price) * 100)
+                : Math.round((100 - parseFloat(price)) * 100);
             const quantityValue = parseInt(quantity, 10);
 
             if (priceValue < 0 || priceValue > 10000) {
@@ -42,9 +50,14 @@ export function OrderForm({ userId, selectedPrice, onOrderPlaced }: OrderFormPro
             if (quantityValue <= 0) {
                 throw new Error('Quantity must be positive');
             }
+            if (!marketId) {
+                throw new Error('No market selected');
+            }
 
             const result = await placeOrder({
                 user_id: userId,
+                market_id: marketId,
+                outcome_id: outcome,
                 side,
                 price: priceValue,
                 quantity: quantityValue,
@@ -70,6 +83,24 @@ export function OrderForm({ userId, selectedPrice, onOrderPlaced }: OrderFormPro
         <div className="order-form">
             <h2>Place Order</h2>
 
+            {/* Outcome Selection */}
+            <div className="outcome-toggle">
+                <button
+                    type="button"
+                    className={`outcome-btn yes ${outcome === 'YES' ? 'active' : ''}`}
+                    onClick={() => setOutcome('YES')}
+                >
+                    YES
+                </button>
+                <button
+                    type="button"
+                    className={`outcome-btn no ${outcome === 'NO' ? 'active' : ''}`}
+                    onClick={() => setOutcome('NO')}
+                >
+                    NO
+                </button>
+            </div>
+
             {/* Side Toggle */}
             <div className="side-toggle">
                 <button
@@ -77,14 +108,14 @@ export function OrderForm({ userId, selectedPrice, onOrderPlaced }: OrderFormPro
                     className={`side-btn ${side === 'buy' ? 'active buy' : ''}`}
                     onClick={() => setSide('buy')}
                 >
-                    Buy YES
+                    Buy {outcome}
                 </button>
                 <button
                     type="button"
                     className={`side-btn ${side === 'sell' ? 'active sell' : ''}`}
                     onClick={() => setSide('sell')}
                 >
-                    Sell YES
+                    Sell {outcome}
                 </button>
             </div>
 
@@ -92,7 +123,7 @@ export function OrderForm({ userId, selectedPrice, onOrderPlaced }: OrderFormPro
                 {/* Price Input */}
                 <div className="form-group">
                     <label>
-                        Price (¢)
+                        Probability (¢)
                         <span className="hint">YES: {yesPrice.toFixed(1)}¢ | NO: {noPrice.toFixed(1)}¢</span>
                     </label>
                     <input
@@ -118,7 +149,7 @@ export function OrderForm({ userId, selectedPrice, onOrderPlaced }: OrderFormPro
 
                 {/* Quantity Input */}
                 <div className="form-group">
-                    <label>Quantity</label>
+                    <label>Shares</label>
                     <input
                         type="number"
                         value={quantity}
@@ -133,12 +164,12 @@ export function OrderForm({ userId, selectedPrice, onOrderPlaced }: OrderFormPro
                 <div className="order-summary">
                     <div className="summary-row">
                         <span>Total Cost</span>
-                        <span>{((parseFloat(price) / 100) * parseInt(quantity || '0', 10)).toFixed(2)} USDC</span>
+                        <span>{((effectivePrice / 100) * parseInt(quantity || '0', 10)).toFixed(2)} USDC</span>
                     </div>
                     <div className="summary-row">
-                        <span>Potential Profit</span>
+                        <span>If {outcome} wins</span>
                         <span className="profit">
-                            {((1 - parseFloat(price) / 100) * parseInt(quantity || '0', 10)).toFixed(2)} USDC
+                            +{((1 - effectivePrice / 100) * parseInt(quantity || '0', 10)).toFixed(2)} USDC
                         </span>
                     </div>
                 </div>
@@ -147,13 +178,16 @@ export function OrderForm({ userId, selectedPrice, onOrderPlaced }: OrderFormPro
                 <button
                     type="submit"
                     className={`submit-btn ${side}`}
-                    disabled={loading || !userId}
+                    disabled={loading || !userId || !marketId}
                 >
-                    {loading ? 'Placing...' : `${side === 'buy' ? 'Buy' : 'Sell'} YES @ ${yesPrice.toFixed(1)}¢`}
+                    {loading ? 'Placing...' : `${side === 'buy' ? 'Buy' : 'Sell'} ${outcome} @ ${effectivePrice.toFixed(1)}¢`}
                 </button>
 
                 {!userId && (
                     <p className="wallet-warning">Connect wallet to place orders</p>
+                )}
+                {!marketId && userId && (
+                    <p className="wallet-warning">Select a market first</p>
                 )}
             </form>
 

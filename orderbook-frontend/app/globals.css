@@ -6,27 +6,27 @@
   --bg-secondary: #161b22;
   --bg-tertiary: #21262d;
   --bg-card: rgba(22, 27, 34, 0.8);
-  
+
   --text-primary: #f0f6fc;
   --text-secondary: #8b949e;
   --text-muted: #6e7681;
-  
+
   --accent-green: #3fb950;
   --accent-green-dim: rgba(63, 185, 80, 0.15);
   --accent-red: #f85149;
   --accent-red-dim: rgba(248, 81, 73, 0.15);
   --accent-blue: #58a6ff;
   --accent-yellow: #d29922;
-  
+
   --border-color: #30363d;
   --border-color-light: #484f58;
-  
+
   /* Sizing */
   --header-height: 64px;
   --footer-height: 48px;
   --panel-radius: 12px;
   --panel-gap: 16px;
-  
+
   /* Fonts */
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', monospace;
 }
@@ -125,8 +125,15 @@ body {
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
 }
 
 .wallet-info {
@@ -404,7 +411,7 @@ body {
   color: var(--text-secondary);
 }
 
-.summary-row + .summary-row {
+.summary-row+.summary-row {
   margin-top: 8px;
 }
 
@@ -510,8 +517,15 @@ body {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .trade-price {
@@ -602,11 +616,25 @@ body {
   border-left: 2px solid transparent;
 }
 
-.log-entry.type-session { border-left-color: var(--accent-blue); }
-.log-entry.type-state { border-left-color: var(--accent-green); }
-.log-entry.type-signature { border-left-color: var(--accent-yellow); }
-.log-entry.type-error { border-left-color: var(--accent-red); }
-.log-entry.type-info { border-left-color: var(--text-muted); }
+.log-entry.type-session {
+  border-left-color: var(--accent-blue);
+}
+
+.log-entry.type-state {
+  border-left-color: var(--accent-green);
+}
+
+.log-entry.type-signature {
+  border-left-color: var(--accent-yellow);
+}
+
+.log-entry.type-error {
+  border-left-color: var(--accent-red);
+}
+
+.log-entry.type-info {
+  border-left-color: var(--text-muted);
+}
 
 .log-entry-header {
   display: flex;
@@ -653,7 +681,7 @@ body {
   .main-content {
     grid-template-columns: 1fr 1fr;
   }
-  
+
   .trade-history-panel {
     grid-column: span 2;
   }
@@ -663,16 +691,228 @@ body {
   .main-content {
     grid-template-columns: 1fr;
   }
-  
+
   .trade-history-panel {
     grid-column: span 1;
   }
-  
+
   .header {
     padding: 0 16px;
   }
-  
+
   .network-badge {
     display: none;
   }
+}
+
+/* ==================== MARKET BAR ==================== */
+
+.market-bar {
+  padding: 16px 24px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  overflow-x: auto;
+}
+
+.market-list {
+  display: flex;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.no-markets {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--text-muted);
+}
+
+.no-markets button {
+  padding: 8px 16px;
+  background: var(--accent-blue);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* ==================== MARKET CARD ==================== */
+
+.market-card {
+  min-width: 280px;
+  max-width: 320px;
+  padding: 16px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.market-card:hover {
+  border-color: var(--accent-blue);
+  transform: translateY(-2px);
+}
+
+.market-card.selected {
+  border-color: var(--accent-blue);
+  background: rgba(88, 166, 255, 0.1);
+}
+
+.market-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.status-badge {
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.status-badge.trading {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+}
+
+.status-badge.locked {
+  background: rgba(210, 153, 34, 0.15);
+  color: var(--accent-yellow);
+}
+
+.status-badge.resolved {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+.status-badge.resolved.yes {
+  background: var(--accent-green);
+}
+
+.status-badge.resolved.no {
+  background: var(--accent-red);
+}
+
+.resolve-time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.market-question {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.market-description {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.market-footer {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ==================== SELECTED MARKET HEADER ==================== */
+
+.selected-market-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.selected-market-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.market-status {
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+}
+
+.market-status.trading {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+}
+
+.market-status.locked {
+  background: rgba(210, 153, 34, 0.15);
+  color: var(--accent-yellow);
+}
+
+.market-status.resolved {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+/* ==================== OUTCOME TOGGLE ==================== */
+
+.outcome-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.outcome-btn {
+  flex: 1;
+  padding: 12px 16px;
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.outcome-btn.yes:hover,
+.outcome-btn.yes.active {
+  border-color: var(--accent-green);
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+}
+
+.outcome-btn.no:hover,
+.outcome-btn.no.active {
+  border-color: var(--accent-red);
+  background: var(--accent-red-dim);
+  color: var(--accent-red);
+}
+
+/* ==================== WALLET ACTIONS ==================== */
+
+.wallet-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.deposit-btn {
+  padding: 8px 16px;
+  background: var(--accent-green);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.deposit-btn:hover {
+  opacity: 0.9;
 }

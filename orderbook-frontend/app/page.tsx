@@ -1,22 +1,70 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { useWallet } from '@/hooks/useWallet';
 import { OrderBook } from '@/components/OrderBook';
 import { OrderForm } from '@/components/OrderForm';
 import { TradeHistory } from '@/components/TradeHistory';
+import { MarketCard } from '@/components/MarketCard';
 import { ChannelLog, addLogEntry } from '@/components/ChannelLog';
+import { Market, listMarkets, createMarket, deposit } from '@/lib/api';
 
 export default function Home() {
   const { orderbook, trades, connected, error: wsError } = useWebSocket();
   const { address, isConnected, isConnecting, connect, error: walletError } = useWallet();
   const [selectedPrice, setSelectedPrice] = useState<number | undefined>();
+  const [markets, setMarkets] = useState<Market[]>([]);
+  const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
+  const [showCreateMarket, setShowCreateMarket] = useState(false);
 
-  // Log connection events
-  if (connected && !wsError) {
-    // Only log once
-  }
+  // Load markets on mount
+  useEffect(() => {
+    loadMarkets();
+  }, []);
+
+  const loadMarkets = async () => {
+    try {
+      const data = await listMarkets();
+      setMarkets(data);
+      if (data.length > 0 && !selectedMarket) {
+        setSelectedMarket(data[0]);
+      }
+    } catch (err) {
+      console.error('Failed to load markets:', err);
+    }
+  };
+
+  const handleCreateDemoMarket = async () => {
+    try {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const market = await createMarket({
+        question: 'Will ETH be above $3000 by end of day?',
+        description: 'Prediction market demo for hackathon',
+        resolves_at: tomorrow.toISOString(),
+        creator_id: address || 'demo',
+      });
+
+      setMarkets([...markets, market]);
+      setSelectedMarket(market);
+      addLogEntry('session', 'Market created', market);
+    } catch (err) {
+      console.error('Failed to create market:', err);
+    }
+  };
+
+  const handleDeposit = async () => {
+    if (!address) return;
+    try {
+      // Deposit 1000 USDC (in basis points: 10000000)
+      await deposit({ user_id: address, amount: 10000000 });
+      addLogEntry('state', 'Deposited 1000 USDC');
+    } catch (err) {
+      console.error('Failed to deposit:', err);
+    }
+  };
 
   const handlePriceClick = (price: number) => {
     setSelectedPrice(price);
@@ -35,8 +83,8 @@ export default function Home() {
       {/* Header */}
       <header className="header">
         <div className="logo">
-          <span className="logo-icon">📈</span>
-          <h1>OrderBook.Trade</h1>
+          <span className="logo-icon">🎯</span>
+          <h1>Prediction Market</h1>
           <span className="network-badge">Yellow Network</span>
         </div>
 
@@ -49,8 +97,13 @@ export default function Home() {
 
           {/* Wallet */}
           {isConnected ? (
-            <div className="wallet-info">
-              <span className="wallet-address">{formatAddress(address!)}</span>
+            <div className="wallet-actions">
+              <button className="deposit-btn" onClick={handleDeposit}>
+                + Deposit
+              </button>
+              <div className="wallet-info">
+                <span className="wallet-address">{formatAddress(address!)}</span>
+              </div>
             </div>
           ) : (
             <button
@@ -71,6 +124,36 @@ export default function Home() {
         </div>
       )}
 
+      {/* Market Selection Bar */}
+      <div className="market-bar">
+        <div className="market-list">
+          {markets.map((market) => (
+            <MarketCard
+              key={market.id}
+              market={market}
+              selected={selectedMarket?.id === market.id}
+              onSelect={setSelectedMarket}
+            />
+          ))}
+          {markets.length === 0 && (
+            <div className="no-markets">
+              <p>No markets yet</p>
+              <button onClick={handleCreateDemoMarket}>Create Demo Market</button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Selected Market Header */}
+      {selectedMarket && (
+        <div className="selected-market-header">
+          <h2>{selectedMarket.question}</h2>
+          <span className={`market-status ${selectedMarket.status}`}>
+            {selectedMarket.status.toUpperCase()}
+          </span>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="main-content">
         {/* Left: Order Book */}
@@ -85,6 +168,7 @@ export default function Home() {
         <section className="panel order-form-panel">
           <OrderForm
             userId={address || ''}
+            marketId={selectedMarket?.id || ''}
             selectedPrice={selectedPrice}
             onOrderPlaced={handleOrderPlaced}
           />

@@ -10,6 +10,8 @@ import (
 // Trade represents a completed trade between two orders
 type Trade struct {
 	ID          string    `json:"id"`
+	MarketID    string    `json:"market_id"`
+	OutcomeID   OutcomeID `json:"outcome_id"` // YES or NO
 	BuyOrderID  string    `json:"buy_order_id"`
 	SellOrderID string    `json:"sell_order_id"`
 	BuyerID     string    `json:"buyer_id"`
@@ -23,6 +25,8 @@ type Trade struct {
 func NewTrade(buyOrder, sellOrder *Order, price, quantity uint64) *Trade {
 	return &Trade{
 		ID:          uuid.New().String(),
+		MarketID:    buyOrder.MarketID,
+		OutcomeID:   buyOrder.OutcomeID,
 		BuyOrderID:  buyOrder.ID,
 		SellOrderID: sellOrder.ID,
 		BuyerID:     buyOrder.UserID,
