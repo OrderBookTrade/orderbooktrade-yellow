@@ -139,19 +139,19 @@ export function ChannelLog({ channelId }: ChannelLogProps) {
                                 >
                                     <div
                                         className="log-entry-header"
-                                        onClick={() => entry.data && toggleItemExpand(entry.id)}
+                                        onClick={() => entry.data !== undefined && toggleItemExpand(entry.id)}
                                     >
                                         <span className="log-icon">{getTypeIcon(entry.type)}</span>
                                         <span className="log-time">{formatTime(entry.timestamp)}</span>
                                         <span className="log-message">{entry.message}</span>
-                                        {entry.data && (
+                                        {Boolean(entry.data !== undefined) && (
                                             <span className="expand-data">
                                                 {expandedItems.has(entry.id) ? '−' : '+'}
                                             </span>
                                         )}
                                     </div>
 
-                                    {entry.data && expandedItems.has(entry.id) && (
+                                    {entry.data !== undefined && expandedItems.has(entry.id) && (
                                         <pre className="log-data">
                                             {JSON.stringify(entry.data, null, 2)}
                                         </pre>
