@@ -104,6 +104,7 @@ export default function Home() {
       {/* Header */}
       <header className="header">
         <div className="logo">
+          <img src="/logo.png" alt="Orderbook Trade" className="logo-image" />
           <h1>Prediction Market</h1>
           <span className="network-badge">Yellow Network</span>
         </div>
