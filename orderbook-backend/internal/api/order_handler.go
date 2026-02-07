@@ -1,10 +1,14 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 
 	"orderbook-backend/internal/engine"
+	"orderbook-backend/internal/yellow"
 )
 
 // PlaceOrderRequest is the request body for placing an order
@@ -93,6 +97,11 @@ func (s *Server) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 			Type: "trade",
 			Data: trade,
 		})
+	}
+
+	// Update Yellow Network state channel if connected
+	if len(trades) > 0 {
+		s.updateYellowSession(r.Context(), req.MarketID)
 	}
 
 	// Broadcast orderbook update for this market
@@ -197,4 +206,78 @@ func (s *Server) broadcastOrderbookForMarket(marketID string) {
 			},
 		},
 	})
+}
+
+// updateYellowSession updates the Yellow Network state channel after trades
+func (s *Server) updateYellowSession(ctx context.Context, marketID string) {
+	// Skip if Yellow Network is not connected
+	if s.sessions == nil || s.yellowClient == nil {
+		return
+	}
+
+	if !s.yellowClient.IsAuthenticated() {
+		log.Printf("Yellow Network not authenticated, skipping state update")
+		return
+	}
+
+	// Get all positions for this market and build allocations
+	positions := s.positions.GetAllPositions(marketID)
+	if len(positions) == 0 {
+		return
+	}
+
+	// Build allocations from current positions
+	allocations := make([]yellow.Allocation, 0)
+	for _, pos := range positions {
+		// Convert position to allocation
+		// In real implementation, this would track actual token balances
+		totalValue := pos.YesShares + pos.NoShares
+		if totalValue > 0 {
+			allocations = append(allocations, yellow.Allocation{
+				Participant: pos.UserID,
+				Token:       s.cfg.DefaultToken,
+				Amount:      fmt.Sprintf("%d", totalValue),
+			})
+		}
+	}
+
+	// Get or create session for this market
+	session, exists := s.sessions.GetSession(marketID)
+	if !exists {
+		// Create new session for this market
+		participants := make([]string, 0, len(allocations))
+		for _, alloc := range allocations {
+			participants = append(participants, alloc.Participant)
+		}
+
+		var err error
+		session, err = s.sessions.CreateSession(ctx, participants, allocations, s.cfg.AdjudicatorAddr)
+		if err != nil {
+			log.Printf("Failed to create Yellow session for market %s: %v", marketID, err)
+			return
+		}
+		log.Printf("Created Yellow session for market %s: %s", marketID, session.GetChannelID())
+	}
+
+	// Build orderbook snapshot as appData
+	obs := s.marketOrderbooks.Get(marketID)
+	appData := ""
+	if obs != nil {
+		yesSnapshot := obs.YES.GetSnapshot()
+		noSnapshot := obs.NO.GetSnapshot()
+		appDataBytes, _ := json.Marshal(map[string]interface{}{
+			"market_id": marketID,
+			"YES":       yesSnapshot,
+			"NO":        noSnapshot,
+		})
+		appData = string(appDataBytes)
+	}
+
+	// Update state channel
+	if err := session.UpdateState(ctx, allocations, appData); err != nil {
+		log.Printf("Failed to update Yellow session state for market %s: %v", marketID, err)
+		return
+	}
+
+	log.Printf("Updated Yellow session state for market %s (version %d)", marketID, session.GetChannelID())
 }
