@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { createPublicClient, createWalletClient, custom, http, type Address } from 'viem';
+import { createPublicClient, createWalletClient, custom, http, getAddress, type Address } from 'viem';
 import { sepolia } from 'viem/chains';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import {
@@ -64,7 +64,28 @@ export function useYellowAuth(walletAddress: string | null): UseYellowAuthReturn
         try {
             console.log('[Yellow Auth] Starting authentication...');
 
-            // Step 1: Generate session keypair
+            // Step 1: Check MetaMask and get connected account
+            if (!window.ethereum) {
+                throw new Error('MetaMask not found');
+            }
+
+            const [rawAddress] = await window.ethereum.request({
+                method: 'eth_requestAccounts'
+            }) as Address[];
+
+            // Convert to checksummed address (important for Yellow Network)
+            const metaMaskAddress = getAddress(rawAddress);
+
+            console.log('[Yellow Auth] Using MetaMask address (checksummed):', metaMaskAddress);
+
+            // Create walletClient with MetaMask account
+            const walletClient = createWalletClient({
+                account: metaMaskAddress,
+                chain: sepolia,
+                transport: custom(window.ethereum)
+            });
+
+            // Step 2: Generate session keypair
             const sessionPrivateKey = generatePrivateKey();
             sessionPrivateKeyRef.current = sessionPrivateKey;
             const sessionAccount = privateKeyToAccount(sessionPrivateKey);
@@ -72,7 +93,7 @@ export function useYellowAuth(walletAddress: string | null): UseYellowAuthReturn
 
             console.log('[Yellow Auth] Generated session key:', sessionKey);
 
-            // Step 2: Create auth parameters
+            // Step 3: Create auth parameters
             const expiresAtTimestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
             const authParams = {
                 session_key: sessionKey,
@@ -103,11 +124,11 @@ export function useYellowAuth(walletAddress: string | null): UseYellowAuthReturn
                 };
             });
 
-            // Step 4: Send auth_request
+            // Step 5: Send auth_request (use MetaMask address for consistency)
             console.log('[Yellow Auth] Sending auth_request...');
             const sessionSigner = createECDSAMessageSigner(sessionPrivateKey);
             const authRequestMsg = await createAuthRequestMessage({
-                address: walletAddress as Address,
+                address: metaMaskAddress,  // Use same address as walletClient
                 application: APPLICATION_NAME,
                 ...authParams
             });
@@ -132,30 +153,10 @@ export function useYellowAuth(walletAddress: string | null): UseYellowAuthReturn
                             const challenge = response.res[2].challenge_message;
                             console.log('[Yellow Auth] Received challenge, requesting signature...');
 
-                            // Step 6: Sign challenge with MetaMask (EIP-712) using SDK helper
+                            // Step 7: Sign challenge with MetaMask (EIP-712) using SDK helper
                             console.log('[Yellow Auth] Signing with EIP-712 using SDK...');
 
-                            if (!window.ethereum) {
-                                throw new Error('MetaMask not found');
-                            }
-
-                            // Request accounts from wallet provider
-                            const accounts = await window.ethereum.request({
-                                method: 'eth_requestAccounts'
-                            }) as string[];
-
-                            if (!accounts || accounts.length === 0) {
-                                throw new Error('No accounts found in wallet');
-                            }
-
-                            const walletClient = createWalletClient({
-                                account: accounts[0] as Address,
-                                chain: sepolia,
-                                transport: custom(window.ethereum)
-                            });
-
-                            // Create EIP-712 signer using SDK
-                            // Note: The SDK helper handles the typed data construction and signing
+                            // Create EIP-712 signer using the walletClient we already created
                             const signer = createEIP712AuthMessageSigner(
                                 walletClient,
                                 authParams,
