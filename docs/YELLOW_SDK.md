@@ -136,10 +136,3 @@ err := sessions.CloseSession(ctx, channelID)
 | Settlement | ⚠️ Not wired |
 
 ---
-
-## Next Steps
-
-1. **Set `PRIVATE_KEY`** in `.env` to enable Yellow integration
-2. **Wire trade execution** to call `session.UpdateState()`
-3. **Add session API** for users to deposit/withdraw
-4. **Test with ClearNode** on testnet

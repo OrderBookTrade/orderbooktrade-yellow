@@ -45,6 +45,11 @@ interface UseWebSocketReturn {
   error: string | null;
 }
 
+interface UseWebSocketOptions {
+  yellowToken?: string | null;
+  sessionKey?: string | null;
+}
+
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8080/ws';
 const RECONNECT_DELAY = 1000;
 const MAX_RECONNECT_DELAY = 30000;
@@ -52,7 +57,8 @@ const MAX_TRADES = 50;
 
 const emptyOrderbook: OrderbookData = { bids: [], asks: [] };
 
-export function useWebSocket(): UseWebSocketReturn {
+export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketReturn {
+  const { yellowToken, sessionKey } = options;
   const [yesOrderbook, setYesOrderbook] = useState<OrderbookData>(emptyOrderbook);
   const [noOrderbook, setNoOrderbook] = useState<OrderbookData>(emptyOrderbook);
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -76,6 +82,16 @@ export function useWebSocket(): UseWebSocketReturn {
         setConnected(true);
         setError(null);
         reconnectDelayRef.current = RECONNECT_DELAY;
+
+        // Send Yellow authentication if available
+        if (yellowToken && sessionKey) {
+          console.log('[WebSocket] Sending Yellow auth...');
+          ws.send(JSON.stringify({
+            type: 'yellow_auth',
+            jwt_token: yellowToken,
+            session_key: sessionKey,
+          }));
+        }
       };
 
       ws.onclose = () => {
@@ -151,7 +167,7 @@ export function useWebSocket(): UseWebSocketReturn {
         wsRef.current.close();
       }
     };
-  }, [connect]);
+  }, [connect, yellowToken, sessionKey]);
 
   return { yesOrderbook, noOrderbook, trades, connected, error };
 }

@@ -2,7 +2,6 @@ package yellow
 
 import (
 	"encoding/json"
-	"time"
 )
 
 // JSON-RPC 2.0 request/response structures for ERC-7824
@@ -40,28 +39,44 @@ type PingResult struct {
 	Pong string `json:"pong"`
 }
 
-// AuthRequestParams for authentication
+// AuthAllowance represents an asset allowance for the session
+type AuthAllowance struct {
+	Asset  string `json:"asset"`
+	Amount string `json:"amount"`
+}
+
+// AuthRequestParams for authentication (EIP-712 compatible)
 type AuthRequestParams struct {
-	ParticipantAddress string `json:"participant_address"`
-	Timestamp          int64  `json:"timestamp"`
+	Address     string          `json:"address"`
+	SessionKey  string          `json:"session_key"`
+	Allowances  []AuthAllowance `json:"allowances"`
+	ExpiresAt   int64           `json:"expires_at"`
+	Scope       string          `json:"scope"`
+	Application string          `json:"application"`
 }
 
 // AuthRequestResult with the challenge to sign
 type AuthRequestResult struct {
-	Challenge string `json:"challenge"`
+	ChallengeMessage string `json:"challenge_message"`
 }
 
-// AuthVerifyParams to verify the signed challenge
+// AuthVerifyParams to verify the signed challenge (EIP-712 signature)
 type AuthVerifyParams struct {
-	ParticipantAddress string `json:"participant_address"`
-	Signature          string `json:"signature"`
-	Timestamp          int64  `json:"timestamp"`
+	Address          string          `json:"address"`
+	SessionKey       string          `json:"session_key"`
+	Signature        string          `json:"signature"`
+	ChallengeMessage string          `json:"challenge_message"`
+	Allowances       []AuthAllowance `json:"allowances"`
+	ExpiresAt        int64           `json:"expires_at"`
+	Scope            string          `json:"scope"`
+	Application      string          `json:"application"`
 }
 
 // AuthVerifyResult on successful auth
 type AuthVerifyResult struct {
-	SessionID string `json:"session_id"`
-	ExpiresAt int64  `json:"expires_at"`
+	SessionKey string `json:"session_key"`
+	JWTToken   string `json:"jwt_token,omitempty"`
+	ExpiresAt  int64  `json:"expires_at"`
 }
 
 // CreateAppSessionParams for creating an app session
@@ -146,21 +161,14 @@ func NewPingRequest() (*Request, error) {
 	return NewRequest("ping", PingParams{})
 }
 
-// NewAuthRequest creates an auth request
-func NewAuthRequest(address string) (*Request, error) {
-	return NewRequest("auth_request", AuthRequestParams{
-		ParticipantAddress: address,
-		Timestamp:          time.Now().Unix(),
-	})
+// NewAuthRequest creates an auth request with full EIP-712 parameters
+func NewAuthRequest(params AuthRequestParams) (*Request, error) {
+	return NewRequest("auth_request", params)
 }
 
-// NewAuthVerify creates an auth verify request
-func NewAuthVerify(address, signature string, timestamp int64) (*Request, error) {
-	return NewRequest("auth_verify", AuthVerifyParams{
-		ParticipantAddress: address,
-		Signature:          signature,
-		Timestamp:          timestamp,
-	})
+// NewAuthVerify creates an auth verify request with EIP-712 signature
+func NewAuthVerify(params AuthVerifyParams) (*Request, error) {
+	return NewRequest("auth_verify", params)
 }
 
 // NewCreateAppSession creates an app session request

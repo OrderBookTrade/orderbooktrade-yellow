@@ -3,18 +3,24 @@
 import { useState, useEffect } from 'react';
 import { useWebSocket, OrderbookData } from '@/hooks/useWebSocket';
 import { useWallet } from '@/hooks/useWallet';
+import { useYellowAuth } from '@/hooks/useYellowAuth';
 import { OrderBook } from '@/components/OrderBook';
 import { OrderForm } from '@/components/OrderForm';
 import { TradeHistory } from '@/components/TradeHistory';
 import { MarketCard } from '@/components/MarketCard';
 import { ChannelLog, addLogEntry } from '@/components/ChannelLog';
+import { YellowConnect } from '@/components/YellowConnect';
 import { Market, listMarkets, createMarket, deposit, mintShares } from '@/lib/api';
 
 type OutcomeTab = 'YES' | 'NO';
 
 export default function Home() {
-  const { yesOrderbook, noOrderbook, trades, connected, error: wsError } = useWebSocket();
   const { address, isConnected, isConnecting, connect, error: walletError } = useWallet();
+  const yellowAuth = useYellowAuth(address);
+  const { yesOrderbook, noOrderbook, trades, connected, error: wsError } = useWebSocket({
+    yellowToken: yellowAuth.jwtToken,
+    sessionKey: yellowAuth.sessionKey,
+  });
   const [selectedPrice, setSelectedPrice] = useState<number | undefined>();
   const [markets, setMarkets] = useState<Market[]>([]);
   const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
@@ -110,6 +116,12 @@ export default function Home() {
         </div>
 
         <div className="header-right">
+          {/* Yellow Network Connection */}
+          <YellowConnect
+            walletAddress={address}
+            walletConnected={isConnected}
+          />
+
           {/* Connection Status */}
           <div className={`connection-status ${connected ? 'connected' : 'disconnected'}`}>
             <span className="status-dot" />

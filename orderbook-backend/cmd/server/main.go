@@ -65,7 +65,7 @@ func main() {
 				if err := yellowClient.Authenticate(ctx); err != nil {
 					log.Printf("❌ Yellow SDK: Authentication failed: %v", err)
 				} else {
-					sessions = yellow.NewSessionManager(yellowClient)
+					sessions = yellow.NewSessionManager(yellowClient, signer)
 					log.Println("✓ Yellow SDK: Authenticated successfully")
 					log.Printf("🟢 Yellow Network: CONNECTED and ready")
 				}

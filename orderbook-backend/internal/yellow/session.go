@@ -11,6 +11,7 @@ import (
 type Session struct {
 	mu          sync.RWMutex
 	client      *Client
+	signer      *Signer
 	channelID   string
 	version     uint64
 	allocations []Allocation
@@ -21,13 +22,15 @@ type Session struct {
 type SessionManager struct {
 	mu       sync.RWMutex
 	client   *Client
+	signer   *Signer
 	sessions map[string]*Session
 }
 
 // NewSessionManager creates a new session manager
-func NewSessionManager(client *Client) *SessionManager {
+func NewSessionManager(client *Client, signer *Signer) *SessionManager {
 	return &SessionManager{
 		client:   client,
+		signer:   signer,
 		sessions: make(map[string]*Session),
 	}
 }
@@ -79,6 +82,7 @@ func (m *SessionManager) CreateSession(
 
 	session := &Session{
 		client:      m.client,
+		signer:      m.signer,
 		channelID:   result.ChannelID,
 		version:     0,
 		allocations: allocations,
@@ -131,9 +135,20 @@ func (s *Session) UpdateState(ctx context.Context, allocations []Allocation, app
 		AppData:     appData,
 	}
 
-	// Sign the state (simplified - in production, need proper EIP-712)
-	// For now, we'll sign a simple hash
-	sig := "" // TODO: Implement proper signing
+	// Sign the state using the signer
+	var sig string
+	if s.signer != nil {
+		// Convert channel ID to bytes32
+		var channelIDBytes [32]byte
+		copy(channelIDBytes[:], []byte(s.channelID))
+
+		var err error
+		sig, err = s.signer.SignStateHashHex(channelIDBytes, s.version, allocations)
+		if err != nil {
+			s.version--
+			return fmt.Errorf("failed to sign state: %w", err)
+		}
+	}
 
 	req, err := NewAppSessionMessage(s.channelID, state, sig)
 	if err != nil {
