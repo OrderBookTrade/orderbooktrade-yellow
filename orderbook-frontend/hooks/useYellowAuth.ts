@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { createPublicClient, createWalletClient, custom, http } from 'viem';
+import { createPublicClient, createWalletClient, custom, http, type Address } from 'viem';
 import { sepolia } from 'viem/chains';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import {
@@ -12,7 +12,7 @@ import {
 } from '@erc7824/nitrolite';
 
 const YELLOW_WS_URL = process.env.NEXT_PUBLIC_YELLOW_WS_URL || 'wss://clearnet-sandbox.yellow.com/ws';
-const APPLICATION_NAME = 'OrderbookTrade';
+const APPLICATION_NAME = 'Test app'; // Must match Yellow Network's expected value
 
 interface YellowAuthState {
     isConnected: boolean;
@@ -73,14 +73,15 @@ export function useYellowAuth(walletAddress: string | null): UseYellowAuthReturn
             console.log('[Yellow Auth] Generated session key:', sessionKey);
 
             // Step 2: Create auth parameters
+            const expiresAtTimestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
             const authParams = {
                 session_key: sessionKey,
                 allowances: [{
                     asset: 'ytest.usd',
                     amount: '1000000000' // Large allowance for testing
                 }],
-                expires_at: BigInt(Math.floor(Date.now() / 1000) + 3600), // 1 hour
-                scope: 'orderbook.app',
+                expires_at: BigInt(expiresAtTimestamp),
+                scope: 'test.app', // Must match Yellow Network's expected value
             };
 
             // Step 3: Connect to Yellow WebSocket
@@ -106,7 +107,7 @@ export function useYellowAuth(walletAddress: string | null): UseYellowAuthReturn
             console.log('[Yellow Auth] Sending auth_request...');
             const sessionSigner = createECDSAMessageSigner(sessionPrivateKey);
             const authRequestMsg = await createAuthRequestMessage({
-                address: walletAddress,
+                address: walletAddress as Address,
                 application: APPLICATION_NAME,
                 ...authParams
             });
@@ -131,32 +132,33 @@ export function useYellowAuth(walletAddress: string | null): UseYellowAuthReturn
                             const challenge = response.res[2].challenge_message;
                             console.log('[Yellow Auth] Received challenge, requesting signature...');
 
-                            // Step 6: Sign challenge with MetaMask (EIP-712)
-                            const publicClient = createPublicClient({
-                                chain: sepolia,
-                                transport: http(),
-                            });
+                            // Step 6: Sign challenge with MetaMask (EIP-712) using SDK helper
+                            console.log('[Yellow Auth] Signing with EIP-712 using SDK...');
+
+                            if (!window.ethereum) {
+                                throw new Error('MetaMask not found');
+                            }
 
                             const walletClient = createWalletClient({
                                 chain: sepolia,
-                                transport: custom(window.ethereum),
-                                account: walletAddress as `0x${string}`,
+                                transport: custom(window.ethereum)
                             });
 
-                            const eip712Signer = createEIP712AuthMessageSigner(
+                            // Create EIP-712 signer using SDK
+                            // Note: The SDK helper handles the typed data construction and signing
+                            const signer = createEIP712AuthMessageSigner(
                                 walletClient,
                                 authParams,
                                 { name: APPLICATION_NAME }
                             );
 
-                            console.log('[Yellow Auth] Signing with EIP-712...');
-                            const verifyMsg = await createAuthVerifyMessageFromChallenge(
-                                eip712Signer,
-                                challenge
-                            );
+                            console.log('[Yellow Auth] Requesting wallet signature and creating verify message...');
 
-                            // Step 7: Send auth_verify
-                            console.log('[Yellow Auth] Sending auth_verify...');
+                            // Create verify message using SDK
+                            // This internaly requests the signature and builds the verify message
+                            const verifyMsg = await createAuthVerifyMessageFromChallenge(signer, challenge);
+
+                            console.log('[Yellow Auth] Sending auth_verify message...');
                             ws.send(verifyMsg);
 
                             // Wait for auth_verify response
@@ -166,18 +168,35 @@ export function useYellowAuth(walletAddress: string | null): UseYellowAuthReturn
                                 try {
                                     const response = JSON.parse(event.data);
                                     console.log('[Yellow Auth] Verify response:', response);
+                                    console.log('[Yellow Auth] Response type:', response.res ? response.res[1] : 'no res');
+                                    console.log('[Yellow Auth] Response data:', response.res ? response.res[2] : 'no data');
 
                                     if (response.res && response.res[1] === 'auth_verify') {
                                         clearTimeout(verifyTimeout);
                                         const result = response.res[2];
+                                        console.log('[Yellow Auth] Auth verify result:', result);
+
+                                        // Try multiple possible field names
+                                        const sessionKeyResult = result.session_key || result.sessionKey || sessionKey;
+                                        const jwtTokenResult = result.jwt_token || result.jwtToken || result.token || '';
+                                        const expiresAtResult = result.expires_at || result.expiresAt || (Math.floor(Date.now() / 1000) + 3600);
+
+                                        console.log('[Yellow Auth] Extracted values:', {
+                                            sessionKey: sessionKeyResult,
+                                            jwtToken: jwtTokenResult ? jwtTokenResult.slice(0, 20) + '...' : 'none',
+                                            expiresAt: expiresAtResult
+                                        });
+
                                         resolve({
-                                            sessionKey: result.session_key,
-                                            jwtToken: result.jwt_token || '',
-                                            expiresAt: result.expires_at,
+                                            sessionKey: sessionKeyResult,
+                                            jwtToken: jwtTokenResult,
+                                            expiresAt: expiresAtResult,
                                         });
                                     } else if (response.error) {
                                         clearTimeout(verifyTimeout);
                                         reject(new Error(response.error.message || 'Auth verification failed'));
+                                    } else {
+                                        console.log('[Yellow Auth] Received non-verify message, waiting...');
                                     }
                                 } catch (err) {
                                     console.error('[Yellow Auth] Parse error:', err);
