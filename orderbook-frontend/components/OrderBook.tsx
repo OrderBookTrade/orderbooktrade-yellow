@@ -1,13 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import { OrderbookData, OrderLevel } from '@/hooks/useWebSocket';
+
+type OutcomeTab = 'YES' | 'NO';
 
 interface OrderBookProps {
     data: OrderbookData;
     onPriceClick?: (price: number) => void;
+    onOutcomeChange?: (outcome: OutcomeTab) => void;
 }
 
-export function OrderBook({ data, onPriceClick }: OrderBookProps) {
+export function OrderBook({ data, onPriceClick, onOutcomeChange }: OrderBookProps) {
+    const [activeOutcome, setActiveOutcome] = useState<OutcomeTab>('YES');
     const { bids, asks } = data;
 
     // Calculate max quantity for bar width scaling
@@ -24,6 +29,14 @@ export function OrderBook({ data, onPriceClick }: OrderBookProps) {
     // Convert price from basis points to display (0-100 cents)
     const formatPrice = (price: number) => (price / 100).toFixed(2);
 
+    // Get last traded price (for display)
+    const lastPrice = bestBid > 0 ? formatPrice(bestBid) : '0.00';
+
+    const handleTabChange = (outcome: OutcomeTab) => {
+        setActiveOutcome(outcome);
+        onOutcomeChange?.(outcome);
+    };
+
     return (
         <div className="orderbook">
             <div className="orderbook-header">
@@ -33,11 +46,37 @@ export function OrderBook({ data, onPriceClick }: OrderBookProps) {
                 )}
             </div>
 
+            {/* Polymarket-style tabs */}
+            <div className="orderbook-tabs">
+                <button
+                    className={`orderbook-tab ${activeOutcome === 'YES' ? 'active yes' : ''}`}
+                    onClick={() => handleTabChange('YES')}
+                >
+                    Trade YES
+                </button>
+                <button
+                    className={`orderbook-tab ${activeOutcome === 'NO' ? 'active no' : ''}`}
+                    onClick={() => handleTabChange('NO')}
+                >
+                    Trade NO
+                </button>
+            </div>
+
+            {/* Outcome indicator */}
+            <div className="orderbook-outcome-label">
+                <span className={`outcome-indicator ${activeOutcome.toLowerCase()}`}>
+                    {activeOutcome}
+                </span>
+                <span className="last-price">Last: {lastPrice}¢</span>
+                {spread > 0 && <span className="spread-info">Spread: {formatPrice(spread)}¢</span>}
+            </div>
+
             <div className="orderbook-content">
                 {/* Labels */}
                 <div className="orderbook-labels">
                     <span>Price</span>
-                    <span>Qty</span>
+                    <span>Shares</span>
+                    <span>Total</span>
                 </div>
 
                 {/* Asks (Sell orders) - stack from bottom up toward spread */}
@@ -56,9 +95,11 @@ export function OrderBook({ data, onPriceClick }: OrderBookProps) {
 
                 {/* Spread indicator */}
                 <div className="spread-bar">
+                    <span className="spread-badge asks">Asks</span>
                     <span className="spread-value">
                         {formatPrice(spread)}¢
                     </span>
+                    <span className="spread-badge bids">Bids</span>
                 </div>
 
                 {/* Bids (Buy orders) - stack from top down from spread */}
@@ -89,6 +130,7 @@ interface OrderBookRowProps {
 
 function OrderBookRow({ level, side, maxQty, onClick, formatPrice }: OrderBookRowProps) {
     const barWidth = (level.quantity / maxQty) * 100;
+    const total = (level.price / 100) * level.quantity;
 
     return (
         <div
@@ -100,7 +142,8 @@ function OrderBookRow({ level, side, maxQty, onClick, formatPrice }: OrderBookRo
                 style={{ width: `${barWidth}%` }}
             />
             <span className="price">{formatPrice(level.price)}¢</span>
-            <span className="quantity">{level.quantity}</span>
+            <span className="quantity">{level.quantity.toLocaleString()}</span>
+            <span className="total">${total.toFixed(2)}</span>
         </div>
     );
 }

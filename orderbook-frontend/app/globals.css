@@ -232,6 +232,78 @@ body {
   font-family: var(--font-mono);
 }
 
+/* Polymarket-style tabs */
+.orderbook-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.orderbook-tab {
+  flex: 1;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
+}
+
+.orderbook-tab:hover {
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.orderbook-tab.active.yes {
+  color: var(--accent-green);
+  border-bottom-color: var(--accent-green);
+}
+
+.orderbook-tab.active.no {
+  color: var(--accent-red);
+  border-bottom-color: var(--accent-red);
+}
+
+/* Outcome indicator row */
+.orderbook-outcome-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.outcome-indicator {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.outcome-indicator.yes {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
+}
+
+.outcome-indicator.no {
+  background: var(--accent-red-dim);
+  color: var(--accent-red);
+}
+
+.last-price {
+  font-family: var(--font-mono);
+}
+
+.spread-info {
+  margin-left: auto;
+  font-family: var(--font-mono);
+}
+
 .orderbook-content {
   flex: 1;
   display: flex;
@@ -308,7 +380,9 @@ body {
 .spread-bar {
   padding: 8px 16px;
   background: var(--bg-tertiary);
-  text-align: center;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   border-top: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
 }
@@ -318,6 +392,24 @@ body {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
+}
+
+.spread-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+.spread-badge.asks {
+  background: var(--accent-red-dim);
+  color: var(--accent-red);
+}
+
+.spread-badge.bids {
+  background: var(--accent-green-dim);
+  color: var(--accent-green);
 }
 
 /* ==================== ORDER FORM ==================== */
