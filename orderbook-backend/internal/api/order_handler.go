@@ -88,6 +88,11 @@ func (s *Server) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 	// Execute trades (update positions)
 	for _, trade := range trades {
 		s.positions.ExecuteTrade(trade)
+		// Broadcast each trade to WebSocket clients
+		s.wsHub.Broadcast(Message{
+			Type: "trade",
+			Data: trade,
+		})
 	}
 
 	// Broadcast orderbook update for this market
