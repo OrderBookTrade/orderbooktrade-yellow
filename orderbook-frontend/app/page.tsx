@@ -83,7 +83,6 @@ export default function Home() {
       {/* Header */}
       <header className="header">
         <div className="logo">
-          <span className="logo-icon">🎯</span>
           <h1>Prediction Market</h1>
           <span className="network-badge">Yellow Network</span>
         </div>
