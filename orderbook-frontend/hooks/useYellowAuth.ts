@@ -139,7 +139,17 @@ export function useYellowAuth(walletAddress: string | null): UseYellowAuthReturn
                                 throw new Error('MetaMask not found');
                             }
 
+                            // Request accounts from wallet provider
+                            const accounts = await window.ethereum.request({
+                                method: 'eth_requestAccounts'
+                            }) as string[];
+
+                            if (!accounts || accounts.length === 0) {
+                                throw new Error('No accounts found in wallet');
+                            }
+
                             const walletClient = createWalletClient({
+                                account: accounts[0] as Address,
                                 chain: sepolia,
                                 transport: custom(window.ethereum)
                             });
