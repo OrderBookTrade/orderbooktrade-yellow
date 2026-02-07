@@ -1,34 +1,32 @@
 @import "tailwindcss";
 
 :root {
-  /* Yellow Network Theme - Red/Orange */
-  --bg-primary: #0a0a0a;
-  --bg-secondary: #141414;
-  --bg-tertiary: #1a1a1a;
-  --bg-card: rgba(20, 20, 20, 0.9);
+  /* Yellow Network Theme - Light Mode */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f8f8;
+  --bg-tertiary: #f0f0f0;
+  --bg-card: rgba(255, 255, 255, 0.95);
+  --bg-dark: #1a1a1a;
 
-  --text-primary: #ffffff;
-  --text-secondary: #a0a0a0;
-  --text-muted: #666666;
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --text-muted: #999999;
 
   /* Yellow Network Brand Colors */
-  --accent-primary: #ff5c35;
-  --accent-primary-dim: rgba(255, 92, 53, 0.15);
-  --accent-secondary: #ff9500;
-  --accent-secondary-dim: rgba(255, 149, 0, 0.15);
-  --accent-green: #00c853;
-  --accent-green-dim: rgba(0, 200, 83, 0.15);
+  --accent-yellow: #f5c800;
+  --accent-yellow-dim: rgba(245, 200, 0, 0.15);
+  --accent-gold: #d4af37;
+  --accent-green: #34c759;
+  --accent-green-dim: rgba(52, 199, 89, 0.15);
   --accent-red: #ff3b30;
   --accent-red-dim: rgba(255, 59, 48, 0.15);
   --accent-blue: #007aff;
-  --accent-yellow: #ffcc00;
 
-  --border-color: #2a2a2a;
-  --border-color-light: #3a3a3a;
+  --border-color: #e0e0e0;
+  --border-color-light: #eeeeee;
 
   /* Gradient for header/branding */
-  --gradient-brand: linear-gradient(135deg, #ff5c35 0%, #ff9500 50%, #ffcc00 100%);
-  --gradient-bg: linear-gradient(180deg, #1a0a0a 0%, #0a0a0a 100%);
+  --gradient-brand: linear-gradient(135deg, #f5c800 0%, #d4af37 100%);
 
   /* Sizing */
   --header-height: 64px;
@@ -47,7 +45,7 @@
 }
 
 body {
-  background: var(--gradient-bg);
+  background: var(--bg-primary);
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   min-height: 100vh;
@@ -68,12 +66,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: linear-gradient(180deg, rgba(255, 92, 53, 0.1) 0%, var(--bg-secondary) 100%);
-  border-bottom: 1px solid rgba(255, 92, 53, 0.2);
+  background: var(--bg-dark);
+  border-bottom: 1px solid var(--border-color);
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(10px);
 }
 
 .logo {
@@ -89,22 +86,18 @@ body {
 .logo h1 {
   font-size: 20px;
   font-weight: 700;
-  background: var(--gradient-brand);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #ffffff;
 }
 
 .network-badge {
   padding: 4px 12px;
-  background: var(--gradient-brand);
+  background: var(--accent-yellow);
   color: #000;
   font-size: 11px;
   font-weight: 700;
   border-radius: 16px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  box-shadow: 0 0 20px rgba(255, 92, 53, 0.3);
 }
 
 .header-right {
@@ -118,9 +111,10 @@ body {
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: var(--bg-tertiary);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 20px;
   font-size: 13px;
+  color: #ffffff;
 }
 
 .connection-status.connected .status-dot {
@@ -152,15 +146,16 @@ body {
 
 .wallet-info {
   padding: 8px 16px;
-  background: var(--bg-tertiary);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   font-family: var(--font-mono);
   font-size: 13px;
+  color: #ffffff;
 }
 
 .connect-btn {
   padding: 10px 20px;
-  background: var(--gradient-brand);
+  background: var(--accent-yellow);
   color: #000;
   border: none;
   border-radius: 8px;
@@ -171,7 +166,7 @@ body {
 
 .connect-btn:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(255, 92, 53, 0.4);
+  box-shadow: 0 4px 12px rgba(245, 200, 0, 0.4);
 }
 
 .connect-btn:disabled {
