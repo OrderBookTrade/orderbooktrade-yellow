@@ -8,7 +8,7 @@ import { OrderForm } from '@/components/OrderForm';
 import { TradeHistory } from '@/components/TradeHistory';
 import { MarketCard } from '@/components/MarketCard';
 import { ChannelLog, addLogEntry } from '@/components/ChannelLog';
-import { Market, listMarkets, createMarket, deposit } from '@/lib/api';
+import { Market, listMarkets, createMarket, deposit, mintShares } from '@/lib/api';
 
 export default function Home() {
   const { orderbook, trades, connected, error: wsError } = useWebSocket();
@@ -66,6 +66,21 @@ export default function Home() {
     }
   };
 
+  const handleMint = async () => {
+    if (!address || !selectedMarket) return;
+    try {
+      // Mint 100 share pairs (100 YES + 100 NO)
+      const result = await mintShares({
+        user_id: address,
+        market_id: selectedMarket.id,
+        amount: 100
+      });
+      addLogEntry('state', `Minted 100 YES + 100 NO shares`, result);
+    } catch (err) {
+      console.error('Failed to mint:', err);
+    }
+  };
+
   const handlePriceClick = (price: number) => {
     setSelectedPrice(price);
   };
@@ -99,6 +114,9 @@ export default function Home() {
             <div className="wallet-actions">
               <button className="deposit-btn" onClick={handleDeposit}>
                 + Deposit
+              </button>
+              <button className="mint-btn" onClick={handleMint} disabled={!selectedMarket}>
+                🪙 Mint Shares
               </button>
               <div className="wallet-info">
                 <span className="wallet-address">{formatAddress(address!)}</span>

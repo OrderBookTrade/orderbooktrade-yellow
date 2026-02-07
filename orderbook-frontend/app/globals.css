@@ -925,3 +925,23 @@ body {
 .deposit-btn:hover {
   opacity: 0.9;
 }
+
+.mint-btn {
+  padding: 8px 16px;
+  background: var(--accent-yellow);
+  color: #000;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.mint-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.mint-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
