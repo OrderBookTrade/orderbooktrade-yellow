@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"sync"
 
+	"orderbook-backend/internal/yellow"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -28,6 +30,11 @@ type Client struct {
 	hub  *Hub
 	conn *websocket.Conn
 	send chan []byte
+
+	// Yellow Network session info
+	yellowToken      string
+	yellowSessionKey string
+	yellowAddress    string
 }
 
 // Hub manages all WebSocket clients
@@ -155,14 +162,60 @@ func (c *Client) readPump() {
 	}()
 
 	for {
-		_, _, err := c.conn.ReadMessage()
+		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("WebSocket error: %v", err)
 			}
 			break
 		}
-		// We don't process incoming messages for now
-		// Could be used for client-side order placement
+
+		// Try to parse as Yellow auth message
+		if authMsg, err := yellow.ParseYellowAuth(message); err == nil {
+			c.handleYellowAuth(authMsg)
+			continue
+		}
+
+		// Handle other message types here if needed
+		log.Printf("Received unhandled message: %s", string(message))
 	}
+}
+
+// handleYellowAuth handles Yellow Network authentication
+func (c *Client) handleYellowAuth(msg *yellow.YellowAuthMessage) {
+	log.Printf("Received Yellow auth: session_key=%s", msg.SessionKey)
+
+	// Validate the JWT token
+	session, err := yellow.ValidateToken(msg.JWTToken)
+	if err != nil {
+		log.Printf("Yellow auth failed: %v", err)
+		errorMsg := Message{
+			Type: "error",
+			Data: map[string]string{
+				"error": "Invalid Yellow authentication",
+			},
+		}
+		data, _ := json.Marshal(errorMsg)
+		c.send <- data
+		return
+	}
+
+	// Store Yellow session info
+	c.yellowToken = msg.JWTToken
+	c.yellowSessionKey = msg.SessionKey
+	c.yellowAddress = session.Address
+
+	log.Printf("✓ Yellow auth successful for address: %s", c.yellowAddress)
+
+	// Send success response
+	successMsg := Message{
+		Type: "yellow_auth_success",
+		Data: map[string]interface{}{
+			"address":     session.Address,
+			"session_key": session.SessionKey,
+			"expires_at":  session.ExpiresAt.Unix(),
+		},
+	}
+	data, _ := json.Marshal(successMsg)
+	c.send <- data
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/signer/core/apitypes"
 )
 
 // Signer handles EIP-712 typed data signing for state channel messages
@@ -75,6 +76,101 @@ func (s *Signer) SignMessageHex(message []byte) (string, error) {
 		return "", err
 	}
 	return "0x" + hex.EncodeToString(sig), nil
+}
+
+// SignEIP712Auth signs the Yellow Network auth challenge using EIP-712
+func (s *Signer) SignEIP712Auth(
+	challenge string,
+	params AuthRequestParams,
+	domainName string,
+) (string, error) {
+	// Build EIP-712 TypedData
+	typedData := apitypes.TypedData{
+		Types: apitypes.Types{
+			"EIP712Domain": []apitypes.Type{
+				{Name: "name", Type: "string"},
+				{Name: "version", Type: "string"},
+			},
+			"AuthVerify": []apitypes.Type{
+				{Name: "address", Type: "address"},
+				{Name: "session_key", Type: "address"},
+				{Name: "challenge_message", Type: "string"},
+				{Name: "allowances", Type: "Allowance[]"},
+				{Name: "expires_at", Type: "uint256"},
+				{Name: "scope", Type: "string"},
+				{Name: "application", Type: "string"},
+			},
+			"Allowance": []apitypes.Type{
+				{Name: "asset", Type: "string"},
+				{Name: "amount", Type: "string"},
+			},
+		},
+		PrimaryType: "AuthVerify",
+		Domain: apitypes.TypedDataDomain{
+			Name:    domainName,
+			Version: "1",
+		},
+		Message: apitypes.TypedDataMessage{
+			"address":           params.Address,
+			"session_key":       params.SessionKey,
+			"challenge_message": challenge,
+			"allowances":        convertAllowancesToTypedData(params.Allowances),
+			"expires_at":        fmt.Sprintf("%d", params.ExpiresAt),
+			"scope":             params.Scope,
+			"application":       params.Application,
+		},
+	}
+
+	// Calculate the hash to sign
+	domainSeparator, err := typedData.HashStruct("EIP712Domain", typedData.Domain.Map())
+	if err != nil {
+		return "", fmt.Errorf("failed to hash domain: %w", err)
+	}
+
+	typedDataHash, err := typedData.HashStruct(typedData.PrimaryType, typedData.Message)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash message: %w", err)
+	}
+
+	// Final hash: keccak256("\x19\x01" + domainSeparator + typedDataHash)
+	rawData := []byte(fmt.Sprintf("\x19\x01%s%s", string(domainSeparator), string(typedDataHash)))
+	hash := crypto.Keccak256(rawData)
+
+	// Sign the hash
+	sig, err := crypto.Sign(hash, s.privateKey)
+	if err != nil {
+		return "", fmt.Errorf("failed to sign: %w", err)
+	}
+
+	// Adjust v value for Ethereum (27 or 28)
+	if sig[64] < 27 {
+		sig[64] += 27
+	}
+
+	return "0x" + hex.EncodeToString(sig), nil
+}
+
+// convertAllowancesToTypedData converts allowances to TypedData format
+func convertAllowancesToTypedData(allowances []AuthAllowance) []map[string]interface{} {
+	result := make([]map[string]interface{}, len(allowances))
+	for i, a := range allowances {
+		result[i] = map[string]interface{}{
+			"asset":  a.Asset,
+			"amount": a.Amount,
+		}
+	}
+	return result
+}
+
+// GenerateSessionKey generates a new random session keypair
+func GenerateSessionKey() (*ecdsa.PrivateKey, common.Address, error) {
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		return nil, common.Address{}, fmt.Errorf("failed to generate key: %w", err)
+	}
+
+	address := crypto.PubkeyToAddress(privateKey.PublicKey)
+	return privateKey, address, nil
 }
 
 // SignStateHash signs a state channel state hash (EIP-712 style)

@@ -18,7 +18,8 @@ type Client struct {
 	url    string
 	signer *Signer
 
-	sessionID     string
+	sessionKey    string // Session key address
+	jwtToken      string // JWT token from auth
 	authenticated bool
 
 	// Pending requests waiting for response
@@ -71,12 +72,38 @@ func (c *Client) Connect(ctx context.Context) error {
 	return nil
 }
 
-// Authenticate performs the auth flow with the ClearNode
+// Authenticate performs the auth flow with the ClearNode using EIP-712
 func (c *Client) Authenticate(ctx context.Context) error {
-	// Step 1: Send auth request
-	authReq, err := NewAuthRequest(c.signer.AddressHex())
+	log.Println("Starting Yellow Network authentication...")
+
+	// Step 1: Generate session keypair
+	_, sessionAddr, err := GenerateSessionKey()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to generate session key: %w", err)
+	}
+	sessionKey := sessionAddr.Hex()
+	log.Printf("  Generated session key: %s", sessionKey)
+
+	// Step 2: Prepare auth parameters
+	authParams := AuthRequestParams{
+		Address:    c.signer.AddressHex(),
+		SessionKey: sessionKey,
+		Allowances: []AuthAllowance{
+			{
+				Asset:  "ytest.usd",
+				Amount: "1000000000", // Large allowance for testing
+			},
+		},
+		ExpiresAt:   time.Now().Unix() + 3600, // 1 hour
+		Scope:       "orderbook.app",
+		Application: "OrderbookTrade",
+	}
+
+	// Step 3: Send auth_request
+	log.Println("  Sending auth_request...")
+	authReq, err := NewAuthRequest(authParams)
+	if err != nil {
+		return fmt.Errorf("failed to create auth request: %w", err)
 	}
 
 	resp, err := c.SendRequest(ctx, authReq)
@@ -93,16 +120,37 @@ func (c *Client) Authenticate(ctx context.Context) error {
 		return fmt.Errorf("failed to parse auth result: %w", err)
 	}
 
-	// Step 2: Sign the challenge
-	signature, err := c.signer.SignMessageHex([]byte(authResult.Challenge))
+	log.Printf("  Received challenge: %s", authResult.ChallengeMessage)
+
+	// Step 4: Sign the challenge using EIP-712
+	log.Println("  Signing challenge with EIP-712...")
+	signature, err := c.signer.SignEIP712Auth(
+		authResult.ChallengeMessage,
+		authParams,
+		authParams.Application,
+	)
 	if err != nil {
 		return fmt.Errorf("failed to sign challenge: %w", err)
 	}
 
-	// Step 3: Verify signature
-	verifyReq, err := NewAuthVerify(c.signer.AddressHex(), signature, time.Now().Unix())
+	log.Printf("  Generated signature: %s", signature[:20]+"...")
+
+	// Step 5: Send auth_verify
+	log.Println("  Sending auth_verify...")
+	verifyParams := AuthVerifyParams{
+		Address:          authParams.Address,
+		SessionKey:       authParams.SessionKey,
+		Signature:        signature,
+		ChallengeMessage: authResult.ChallengeMessage,
+		Allowances:       authParams.Allowances,
+		ExpiresAt:        authParams.ExpiresAt,
+		Scope:            authParams.Scope,
+		Application:      authParams.Application,
+	}
+
+	verifyReq, err := NewAuthVerify(verifyParams)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create verify request: %w", err)
 	}
 
 	resp, err = c.SendRequest(ctx, verifyReq)
@@ -120,11 +168,18 @@ func (c *Client) Authenticate(ctx context.Context) error {
 	}
 
 	c.mu.Lock()
-	c.sessionID = verifyResult.SessionID
+	c.sessionKey = verifyResult.SessionKey
+	c.jwtToken = verifyResult.JWTToken
 	c.authenticated = true
 	c.mu.Unlock()
 
-	log.Printf("Authenticated with Yellow Network, session: %s", verifyResult.SessionID)
+	log.Printf("✓ Authenticated successfully!")
+	log.Printf("  Session Key: %s", verifyResult.SessionKey)
+	if verifyResult.JWTToken != "" {
+		log.Printf("  JWT Token: %s...", verifyResult.JWTToken[:20])
+	}
+	log.Printf("  Expires At: %s", time.Unix(verifyResult.ExpiresAt, 0).Format(time.RFC3339))
+
 	return nil
 }
 
