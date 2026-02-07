@@ -48,7 +48,7 @@ export default function Home() {
 
       const market = await createMarket({
         question: 'Will ETH be above $3000 by end of day?',
-        description: 'Prediction market demo for hackathon',
+        description: 'Prediction market demo for EthGlobal - HackMoney hackathon',
         resolves_at: tomorrow.toISOString(),
         creator_id: address || 'demo',
       });

@@ -12,11 +12,18 @@ import (
 	"orderbook-backend/internal/engine"
 	"orderbook-backend/internal/market"
 	"orderbook-backend/internal/yellow"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	log.Println("Starting Orderbook Backend (Prediction Market Mode)...")
+
+	// Load .env file if it exists
+	if err := godotenv.Load(); err != nil {
+		log.Println("No .env file found, using environment variables")
+	}
 
 	// Load configuration
 	cfg := config.Load()
@@ -38,29 +45,34 @@ func main() {
 	var yellowClient *yellow.Client
 	var sessions *yellow.SessionManager
 
+	log.Println("Initializing Yellow SDK...")
 	if cfg.PrivateKey != "" {
 		signer, err := yellow.NewSigner(cfg.PrivateKey)
 		if err != nil {
-			log.Printf("Warning: Failed to initialize signer: %v", err)
+			log.Printf("❌ Yellow SDK: Failed to initialize signer: %v", err)
 		} else {
+			log.Printf("✓ Yellow SDK: Signer initialized (address: %s)", signer.Address().Hex())
 			yellowClient = yellow.NewClient(cfg.YellowNodeURL, signer)
 
 			// Connect to Yellow Network
+			log.Printf("  Connecting to Yellow Network: %s", cfg.YellowNodeURL)
 			ctx := context.Background()
 			if err := yellowClient.Connect(ctx); err != nil {
-				log.Printf("Warning: Failed to connect to Yellow Network: %v", err)
+				log.Printf("❌ Yellow SDK: Connection failed: %v", err)
 			} else {
+				log.Println("✓ Yellow SDK: WebSocket connected")
 				// Authenticate
 				if err := yellowClient.Authenticate(ctx); err != nil {
-					log.Printf("Warning: Failed to authenticate with Yellow Network: %v", err)
+					log.Printf("❌ Yellow SDK: Authentication failed: %v", err)
 				} else {
 					sessions = yellow.NewSessionManager(yellowClient)
-					log.Println("Connected to Yellow Network")
+					log.Println("✓ Yellow SDK: Authenticated successfully")
+					log.Printf("🟢 Yellow Network: CONNECTED and ready")
 				}
 			}
 		}
 	} else {
-		log.Println("Yellow Network integration disabled (no PRIVATE_KEY set)")
+		log.Println("⚪ Yellow SDK: Disabled (no PRIVATE_KEY set)")
 	}
 
 	// Initialize API server
