@@ -93,7 +93,7 @@ func (pm *PositionManager) ValidateOrder(order *Order) error {
 		// Sell: need shares
 		pos := pm.GetPosition(order.UserID, order.MarketID)
 		var available uint64
-		if order.OutcomeID == OutcomeYes {
+		if order.OutcomeID == OutcomeYES {
 			available = pos.YesShares
 		} else {
 			available = pos.NoShares
@@ -128,7 +128,7 @@ func (pm *PositionManager) ExecuteTrade(trade *Trade) {
 	pm.balances[trade.SellerID] += cost
 
 	// Transfer shares based on outcome
-	if trade.OutcomeID == OutcomeYes {
+	if trade.OutcomeID == OutcomeYES {
 		buyerPos.YesShares += trade.Quantity
 		sellerPos.YesShares -= trade.Quantity
 	} else {
@@ -190,7 +190,7 @@ func (pm *PositionManager) PayoutWinningShares(userID, marketID string, winningO
 	pos := pm.getOrCreatePosition(userID, marketID)
 
 	var payout uint64
-	if winningOutcome == OutcomeYes {
+	if winningOutcome == OutcomeYES {
 		payout = pos.YesShares * 10000 // Each share = 1 USDC = 10000 basis points
 		pos.YesShares = 0
 		pos.NoShares = 0 // Losing shares become worthless

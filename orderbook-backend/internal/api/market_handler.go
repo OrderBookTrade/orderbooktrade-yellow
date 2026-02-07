@@ -134,9 +134,9 @@ func (s *Server) handleResolveMarket(w http.ResponseWriter, r *http.Request) {
 	for _, pos := range positions {
 		var engineOutcome engine.OutcomeID
 		if mkt.Outcome != nil && *mkt.Outcome == market.OutcomeYes {
-			engineOutcome = engine.OutcomeYes
+			engineOutcome = engine.OutcomeYES
 		} else {
-			engineOutcome = engine.OutcomeNo
+			engineOutcome = engine.OutcomeNO
 		}
 		payout := s.positions.PayoutWinningShares(pos.UserID, marketID, engineOutcome)
 		totalPayout += payout

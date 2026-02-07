@@ -15,14 +15,6 @@ const (
 	SideSell Side = "sell"
 )
 
-// OutcomeID represents the outcome being traded
-type OutcomeID string
-
-const (
-	OutcomeYes OutcomeID = "YES"
-	OutcomeNo  OutcomeID = "NO"
-)
-
 // OrderStatus represents the current status of an order
 type OrderStatus string
 

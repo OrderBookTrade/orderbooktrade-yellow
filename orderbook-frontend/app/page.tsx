@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useWebSocket, OrderbookData } from '@/hooks/useWebSocket';
 import { useWallet } from '@/hooks/useWallet';
 import { OrderBook } from '@/components/OrderBook';
 import { OrderForm } from '@/components/OrderForm';
@@ -10,13 +10,19 @@ import { MarketCard } from '@/components/MarketCard';
 import { ChannelLog, addLogEntry } from '@/components/ChannelLog';
 import { Market, listMarkets, createMarket, deposit, mintShares } from '@/lib/api';
 
+type OutcomeTab = 'YES' | 'NO';
+
 export default function Home() {
-  const { orderbook, trades, connected, error: wsError } = useWebSocket();
+  const { yesOrderbook, noOrderbook, trades, connected, error: wsError } = useWebSocket();
   const { address, isConnected, isConnecting, connect, error: walletError } = useWallet();
   const [selectedPrice, setSelectedPrice] = useState<number | undefined>();
   const [markets, setMarkets] = useState<Market[]>([]);
   const [selectedMarket, setSelectedMarket] = useState<Market | null>(null);
   const [showCreateMarket, setShowCreateMarket] = useState(false);
+  const [activeOutcome, setActiveOutcome] = useState<OutcomeTab>('YES');
+
+  // Get the orderbook based on active outcome
+  const currentOrderbook: OrderbookData = activeOutcome === 'YES' ? yesOrderbook : noOrderbook;
 
   // Load markets on mount
   useEffect(() => {
@@ -116,7 +122,7 @@ export default function Home() {
                 + Deposit
               </button>
               <button className="mint-btn" onClick={handleMint} disabled={!selectedMarket}>
-                🪙 Mint Shares
+                Mint Shares
               </button>
               <div className="wallet-info">
                 <span className="wallet-address">{formatAddress(address!)}</span>
@@ -176,7 +182,9 @@ export default function Home() {
         {/* Left: Order Book */}
         <section className="panel orderbook-panel">
           <OrderBook
-            data={orderbook}
+            data={currentOrderbook}
+            activeOutcome={activeOutcome}
+            onOutcomeChange={setActiveOutcome}
             onPriceClick={handlePriceClick}
           />
         </section>

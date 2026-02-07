@@ -21,9 +21,9 @@ func main() {
 	// Load configuration
 	cfg := config.Load()
 
-	// Initialize matching engine
-	orderbook := engine.NewOrderbook()
-	log.Println("Matching engine initialized")
+	// Initialize market orderbooks (separate YES/NO orderbooks per market)
+	marketOrderbooks := engine.NewMarketOrderbooks()
+	log.Println("Market orderbooks initialized")
 
 	// Initialize market manager (prediction markets)
 	marketManager := market.NewManager()
@@ -64,7 +64,7 @@ func main() {
 	}
 
 	// Initialize API server
-	server := api.NewServer(cfg, orderbook, yellowClient, sessions, marketManager, positions)
+	server := api.NewServer(cfg, marketOrderbooks, yellowClient, sessions, marketManager, positions)
 
 	// Start lifecycle manager (auto-lock markets when resolution time passes)
 	ctx, cancel := context.WithCancel(context.Background())

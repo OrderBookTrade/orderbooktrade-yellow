@@ -1,18 +1,17 @@
 'use client';
 
-import { useState } from 'react';
 import { OrderbookData, OrderLevel } from '@/hooks/useWebSocket';
 
 type OutcomeTab = 'YES' | 'NO';
 
 interface OrderBookProps {
     data: OrderbookData;
+    activeOutcome: OutcomeTab;
     onPriceClick?: (price: number) => void;
     onOutcomeChange?: (outcome: OutcomeTab) => void;
 }
 
-export function OrderBook({ data, onPriceClick, onOutcomeChange }: OrderBookProps) {
-    const [activeOutcome, setActiveOutcome] = useState<OutcomeTab>('YES');
+export function OrderBook({ data, activeOutcome, onPriceClick, onOutcomeChange }: OrderBookProps) {
     const { bids, asks } = data;
 
     // Calculate max quantity for bar width scaling
@@ -33,7 +32,6 @@ export function OrderBook({ data, onPriceClick, onOutcomeChange }: OrderBookProp
     const lastPrice = bestBid > 0 ? formatPrice(bestBid) : '0.00';
 
     const handleTabChange = (outcome: OutcomeTab) => {
-        setActiveOutcome(outcome);
         onOutcomeChange?.(outcome);
     };
 

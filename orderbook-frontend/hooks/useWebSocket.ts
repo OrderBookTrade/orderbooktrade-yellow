@@ -13,6 +13,13 @@ export interface OrderbookData {
   asks: OrderLevel[];
 }
 
+// Dual orderbook structure for YES/NO outcomes
+export interface DualOrderbookData {
+  market_id: string;
+  YES: OrderbookData;
+  NO: OrderbookData;
+}
+
 export interface Trade {
   id: string;
   buy_order_id: string;
@@ -22,15 +29,17 @@ export interface Trade {
   price: number;
   quantity: number;
   timestamp: string;
+  outcome_id?: string;
 }
 
 interface WebSocketMessage {
-  type: 'orderbook' | 'trade';
-  data: OrderbookData | Trade;
+  type: 'orderbook' | 'trade' | 'connected';
+  data: DualOrderbookData | Trade | { status: string };
 }
 
 interface UseWebSocketReturn {
-  orderbook: OrderbookData;
+  yesOrderbook: OrderbookData;
+  noOrderbook: OrderbookData;
   trades: Trade[];
   connected: boolean;
   error: string | null;
@@ -41,12 +50,15 @@ const RECONNECT_DELAY = 1000;
 const MAX_RECONNECT_DELAY = 30000;
 const MAX_TRADES = 50;
 
+const emptyOrderbook: OrderbookData = { bids: [], asks: [] };
+
 export function useWebSocket(): UseWebSocketReturn {
-  const [orderbook, setOrderbook] = useState<OrderbookData>({ bids: [], asks: [] });
+  const [yesOrderbook, setYesOrderbook] = useState<OrderbookData>(emptyOrderbook);
+  const [noOrderbook, setNoOrderbook] = useState<OrderbookData>(emptyOrderbook);
   const [trades, setTrades] = useState<Trade[]>([]);
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const reconnectDelayRef = useRef(RECONNECT_DELAY);
@@ -69,7 +81,7 @@ export function useWebSocket(): UseWebSocketReturn {
       ws.onclose = () => {
         console.log('WebSocket disconnected');
         setConnected(false);
-        
+
         // Schedule reconnection
         reconnectTimeoutRef.current = setTimeout(() => {
           reconnectDelayRef.current = Math.min(
@@ -88,10 +100,26 @@ export function useWebSocket(): UseWebSocketReturn {
       ws.onmessage = (event) => {
         try {
           const message: WebSocketMessage = JSON.parse(event.data);
-          
+
           switch (message.type) {
+            case 'connected':
+              console.log('WebSocket handshake complete');
+              break;
             case 'orderbook':
-              setOrderbook(message.data as OrderbookData);
+              // Handle dual orderbook format
+              const dualData = message.data as DualOrderbookData;
+              if (dualData.YES) {
+                setYesOrderbook({
+                  bids: dualData.YES.bids || [],
+                  asks: dualData.YES.asks || [],
+                });
+              }
+              if (dualData.NO) {
+                setNoOrderbook({
+                  bids: dualData.NO.bids || [],
+                  asks: dualData.NO.asks || [],
+                });
+              }
               break;
             case 'trade':
               setTrades(prev => {
@@ -125,5 +153,5 @@ export function useWebSocket(): UseWebSocketReturn {
     };
   }, [connect]);
 
-  return { orderbook, trades, connected, error };
+  return { yesOrderbook, noOrderbook, trades, connected, error };
 }

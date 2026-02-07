@@ -125,11 +125,10 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Start read pump (handles disconnection)
 	go client.readPump()
 
-	// Send initial orderbook state
-	snapshot := s.orderbook.GetSnapshot()
+	// Send welcome message - client should request specific market orderbook
 	msg := Message{
-		Type: "orderbook",
-		Data: snapshot,
+		Type: "connected",
+		Data: map[string]string{"status": "connected"},
 	}
 	data, _ := json.Marshal(msg)
 	client.send <- data

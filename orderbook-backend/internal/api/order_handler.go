@@ -58,9 +58,9 @@ func (s *Server) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 	var outcome engine.OutcomeID
 	switch req.OutcomeID {
 	case "YES":
-		outcome = engine.OutcomeYes
+		outcome = engine.OutcomeYES
 	case "NO":
-		outcome = engine.OutcomeNo
+		outcome = engine.OutcomeNO
 	default:
 		writeError(w, http.StatusBadRequest, "invalid outcome_id: must be 'YES' or 'NO'")
 		return
@@ -75,8 +75,11 @@ func (s *Server) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get the correct orderbook for this market and outcome
+	orderbook := s.marketOrderbooks.GetOrderbook(req.MarketID, outcome)
+
 	// Place order and get trades
-	trades, err := s.orderbook.PlaceOrder(order)
+	trades, err := orderbook.PlaceOrder(order)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
@@ -87,8 +90,8 @@ func (s *Server) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 		s.positions.ExecuteTrade(trade)
 	}
 
-	// Broadcast orderbook update
-	s.broadcastOrderbook()
+	// Broadcast orderbook update for this market
+	s.broadcastOrderbookForMarket(req.MarketID)
 
 	writeJSON(w, http.StatusOK, PlaceOrderResponse{
 		Order:  order,
@@ -96,13 +99,30 @@ func (s *Server) handlePlaceOrder(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleGetOrderbook handles GET /api/orderbook
+// handleGetOrderbook handles GET /api/orderbook?market_id=xxx&outcome=YES
 func (s *Server) handleGetOrderbook(w http.ResponseWriter, r *http.Request) {
-	snapshot := s.orderbook.GetSnapshot()
-	writeJSON(w, http.StatusOK, snapshot)
+	marketID := r.URL.Query().Get("market_id")
+	outcomeStr := r.URL.Query().Get("outcome")
+
+	// Default to YES if not specified
+	outcome := engine.OutcomeYES
+	if outcomeStr == "NO" {
+		outcome = engine.OutcomeNO
+	}
+
+	// Get orderbook for specific market and outcome
+	orderbook := s.marketOrderbooks.GetOrderbook(marketID, outcome)
+	snapshot := orderbook.GetSnapshot()
+
+	// Add outcome info to response
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"outcome": string(outcome),
+		"bids":    snapshot.Bids,
+		"asks":    snapshot.Asks,
+	})
 }
 
-// handleCancelOrder handles DELETE /api/order/{id}
+// handleCancelOrder handles DELETE /api/order/{id}?market_id=xxx&outcome=YES
 func (s *Server) handleCancelOrder(w http.ResponseWriter, r *http.Request) {
 	orderID := r.PathValue("id")
 	if orderID == "" {
@@ -110,13 +130,22 @@ func (s *Server) handleCancelOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.orderbook.CancelOrder(orderID); err != nil {
+	marketID := r.URL.Query().Get("market_id")
+	outcomeStr := r.URL.Query().Get("outcome")
+
+	outcome := engine.OutcomeYES
+	if outcomeStr == "NO" {
+		outcome = engine.OutcomeNO
+	}
+
+	orderbook := s.marketOrderbooks.GetOrderbook(marketID, outcome)
+	if err := orderbook.CancelOrder(orderID); err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
 	// Broadcast orderbook update
-	s.broadcastOrderbook()
+	s.broadcastOrderbookForMarket(marketID)
 
 	writeJSON(w, http.StatusOK, map[string]string{
 		"status":   "cancelled",
@@ -124,17 +153,43 @@ func (s *Server) handleCancelOrder(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleGetTrades handles GET /api/trades
+// handleGetTrades handles GET /api/trades?market_id=xxx&outcome=YES
 func (s *Server) handleGetTrades(w http.ResponseWriter, r *http.Request) {
-	trades := s.orderbook.RecentTrades(100)
+	marketID := r.URL.Query().Get("market_id")
+	outcomeStr := r.URL.Query().Get("outcome")
+
+	outcome := engine.OutcomeYES
+	if outcomeStr == "NO" {
+		outcome = engine.OutcomeNO
+	}
+
+	orderbook := s.marketOrderbooks.GetOrderbook(marketID, outcome)
+	trades := orderbook.RecentTrades(100)
 	writeJSON(w, http.StatusOK, trades)
 }
 
-// broadcastOrderbook sends the current orderbook state to all WebSocket clients
-func (s *Server) broadcastOrderbook() {
-	snapshot := s.orderbook.GetSnapshot()
+// broadcastOrderbookForMarket sends both YES and NO orderbooks for a market
+func (s *Server) broadcastOrderbookForMarket(marketID string) {
+	obs := s.marketOrderbooks.Get(marketID)
+	if obs == nil {
+		return
+	}
+
+	yesSnapshot := obs.YES.GetSnapshot()
+	noSnapshot := obs.NO.GetSnapshot()
+
 	s.wsHub.Broadcast(Message{
 		Type: "orderbook",
-		Data: snapshot,
+		Data: map[string]interface{}{
+			"market_id": marketID,
+			"YES": map[string]interface{}{
+				"bids": yesSnapshot.Bids,
+				"asks": yesSnapshot.Asks,
+			},
+			"NO": map[string]interface{}{
+				"bids": noSnapshot.Bids,
+				"asks": noSnapshot.Asks,
+			},
+		},
 	})
 }

@@ -13,33 +13,33 @@ import (
 
 // Server holds all dependencies for the HTTP server
 type Server struct {
-	cfg           *config.Config
-	orderbook     *engine.Orderbook
-	yellowClient  *yellow.Client
-	sessions      *yellow.SessionManager
-	allocations   *state.Allocations
-	wsHub         *Hub
-	marketManager *market.Manager
-	positions     *engine.PositionManager
+	cfg              *config.Config
+	marketOrderbooks *engine.MarketOrderbooks
+	yellowClient     *yellow.Client
+	sessions         *yellow.SessionManager
+	allocations      *state.Allocations
+	wsHub            *Hub
+	marketManager    *market.Manager
+	positions        *engine.PositionManager
 }
 
 // NewServer creates a new API server
 func NewServer(
 	cfg *config.Config,
-	orderbook *engine.Orderbook,
+	marketOrderbooks *engine.MarketOrderbooks,
 	yellowClient *yellow.Client,
 	sessions *yellow.SessionManager,
 	marketManager *market.Manager,
 	positions *engine.PositionManager,
 ) *Server {
 	return &Server{
-		cfg:           cfg,
-		orderbook:     orderbook,
-		yellowClient:  yellowClient,
-		sessions:      sessions,
-		wsHub:         NewHub(),
-		marketManager: marketManager,
-		positions:     positions,
+		cfg:              cfg,
+		marketOrderbooks: marketOrderbooks,
+		yellowClient:     yellowClient,
+		sessions:         sessions,
+		wsHub:            NewHub(),
+		marketManager:    marketManager,
+		positions:        positions,
 	}
 }
 
@@ -86,13 +86,7 @@ func (s *Server) Start() error {
 	// Start WebSocket hub
 	go s.wsHub.Run()
 
-	// Set up trade notifications to broadcast
-	s.orderbook.SetTradeCallback(func(trade *engine.Trade) {
-		s.wsHub.Broadcast(Message{
-			Type: "trade",
-			Data: trade,
-		})
-	})
+	// Trade callbacks are set per-market when markets are created
 
 	mux := http.NewServeMux()
 	s.RegisterRoutes(mux)
