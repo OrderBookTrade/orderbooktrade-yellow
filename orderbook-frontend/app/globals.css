@@ -246,6 +246,11 @@ body {
   overflow-y: auto;
 }
 
+.orderbook-side.asks {
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+}
+
 .orderbook-labels {
   display: flex;
   justify-content: space-between;

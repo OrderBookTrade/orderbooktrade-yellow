@@ -34,13 +34,15 @@ export function OrderBook({ data, onPriceClick }: OrderBookProps) {
             </div>
 
             <div className="orderbook-content">
-                {/* Asks (Sell orders) - displayed in reverse order */}
+                {/* Labels */}
+                <div className="orderbook-labels">
+                    <span>Price</span>
+                    <span>Qty</span>
+                </div>
+
+                {/* Asks (Sell orders) - stack from bottom up toward spread */}
                 <div className="orderbook-side asks">
-                    <div className="orderbook-labels">
-                        <span>Price</span>
-                        <span>Qty</span>
-                    </div>
-                    {asks.slice().reverse().map((level, i) => (
+                    {asks.map((level, i) => (
                         <OrderBookRow
                             key={`ask-${level.price}-${i}`}
                             level={level}
@@ -59,7 +61,7 @@ export function OrderBook({ data, onPriceClick }: OrderBookProps) {
                     </span>
                 </div>
 
-                {/* Bids (Buy orders) */}
+                {/* Bids (Buy orders) - stack from top down from spread */}
                 <div className="orderbook-side bids">
                     {bids.map((level, i) => (
                         <OrderBookRow
