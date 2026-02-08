@@ -111,20 +111,36 @@ func (s *Server) updateYellowSession(ctx context.Context, marketID string) {
 
 ```
 orderbooktrade-yellow/
-├── orderbook-frontend/     # Next.js 16 + React
+│
+├── orderbook-frontend/           # Next.js 16 + React + TypeScript
+│   ├── app/                      # Next.js App Router
 │   ├── hooks/
-│   │   ├── useYellowAuth.ts   # Yellow SDK auth
-│   │   ├── useWebSocket.ts    # Real-time orderbook
-│   │   └── useWallet.ts       # MetaMask integration
-│   └── components/            # Trading UI
-├── orderbook-backend/      # Go matching engine
-│   ├── internal/
-│   │   ├── engine/           # FIFO orderbook
-│   │   ├── yellow/           # Yellow SDK client
-│   │   └── api/              # WebSocket handlers
-│   └── cmd/server/           # Entry point
-├── contracts/              # Solidity (settlement)
-└── yellow-client/          # SDK test scripts
+│   ├── components/
+│   └── lib/
+│
+├── orderbook-backend/            # Go CLOB Matching Engine
+│   ├── cmd/server/
+│   └── internal/
+│       ├── engine/               # FIFO price-time priority matching
+│       ├── yellow/               # Yellow SDK client & session manager
+│       ├── api/                  # WebSocket & REST handlers
+│       ├── market/               # Prediction market management
+│       └── config/               # Environment configuration
+│
+├── yellow-client/                # SDK Testing & Utilities
+│
+├── contracts/                    # Solidity Smart Contracts
+│   └── (Nitrolite adjudicator contracts)
+│
+├── assets/                       # Documentation assets
+│   ├── logo/
+│   ├── screenshot/
+│
+└── docs/                         # Additional documentation
+    ├── YELLOW_SDK.md             # Yellow integration guide
+    ├── API.md                    # API documentation
+    
+    
 ```
 
 
