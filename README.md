@@ -4,6 +4,9 @@
 
 [![ETHGlobal HackMoney 2026](https://img.shields.io/badge/ETHGlobal-HackMoney%202026-yellow)](https://ethglobal.com/events/hackmoney2026)
 [![Yellow Network](https://img.shields.io/badge/Powered%20by-Yellow%20Network-FFD700)](https://yellow.org)
+[![Demo Video](https://img.shields.io/badge/Demo-YouTube-red)](https://www.youtube.com/watch?v=oYwGaJkwgOE)
+[![ETHGlobal Showcase](https://img.shields.io/badge/Showcase-ETHGlobal-blue)](https://ethglobal.com/showcase/orderbooktradeyellow-b7xid)
+
 
 ## 1. What is OrderbookTrade-Yellow?
 
@@ -162,8 +165,12 @@ orderbooktrade-yellow/
 
 ## 8. Links
 
+- [Demo Video](https://www.youtube.com/watch?v=oYwGaJkwgOE)
+- [ETHGlobal Showcase](https://ethglobal.com/showcase/orderbooktradeyellow-b7xid)
 - [Repo Link](https://github.com/OrderBookTrade/orderbooktrade-yellow)
-- [Demo Website ](https://orderbooktrade-yellow-app.vercel.app/)
+- [Demo Website](https://orderbooktrade-yellow-app.vercel.app/)
 - [Yellow Network](https://yellow.org)
 - [Nitrolite Protocol](https://github.com/erc7824/nitrolite)
+
+
 
