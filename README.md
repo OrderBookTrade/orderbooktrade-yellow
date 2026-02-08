@@ -5,36 +5,79 @@
 [![ETHGlobal HackMoney 2026](https://img.shields.io/badge/ETHGlobal-HackMoney%202026-yellow)](https://ethglobal.com/events/hackmoney2026)
 [![Yellow Network](https://img.shields.io/badge/Powered%20by-Yellow%20Network-FFD700)](https://yellow.org)
 
-## 🎯 What is OrderbookTrade-Yellow?
+## 1. What is OrderbookTrade-Yellow?
 
-**OrderbookTrade-Yellow** is a real-time **prediction market** with a professional-grade **limit orderbook**, powered entirely by Yellow Network's state channels.
+**OrderbookTrade-Yellow** is a real-time **prediction market** with a  **CLOB orderbook**, powered entirely by Yellow Network's Nitrolite state channels.
 
-**Key Innovation:** Users deposit once, trade unlimited times with **zero gas fees**, and settle on-chain when they're done.
+* **Key Innovation:** 
 
-### Why This Matters
-
-| Traditional DEX | OrderbookTrade-Yellow |
-|----------------|----------------------|
-| Gas fee per trade | ✅ Zero gas during session |
-| 12+ sec confirmation | ⚡ Sub-second execution |
-| Limited order types | 📊 Full orderbook (limit/market) |
-| Single trade = 1 tx | 🔄 Unlimited trades = 1 tx |
+  Users deposit once, trade unlimited times with **zero gas fees**, and settle on-chain when they're done.
+  
 
 ---
 
-## 🏗️ Architecture
+## 2. Project Architecture![Architecture](assets/architecture.png)
 
-![Architecture](assets/architecture.png)
+## 3. Problem Solving 
 
-### Trading Flow
+| AMM Based DEX        | OrderbookTrade-Yellow                      |
+| -------------------- | ------------------------------------------ |
+| Gas fee per trade    | **Zero gas** during session                |
+| 12+ sec confirmation | **< 1 second** execution (Clearnode based) |
+| Limited order types  | **CLOB** Full orderbook (limit/market)     |
+| Single trade = 1 tx  | **Unlimited trades** = 1 tx                |
 
-![Trading Flow](assets/trading_flow.png)
+
+
+## 4.Trading Flow
+
+
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant User as User
+  participant FE as Frontend
+  participant MM as MetaMask
+  participant Y as Yellow ClearNode (WS)
+  participant BE as Backend (WS)
+
+  User->>FE: Connect wallet
+  FE->>MM: Request accounts
+  MM-->>FE: Wallet address
+
+  User->>FE: Click "Connect Yellow"
+  FE->>FE: Generate session keypair
+
+  FE->>Y: Connect via WebSocket
+  FE->>Y: auth_request { address, session_key, allowances, expires_at, ... }
+  Y-->>FE: auth_challenge { challenge_message }
+
+  FE->>MM: EIP-712 sign(challenge_message)
+  MM-->>FE: signature
+
+  FE->>Y: auth_verify { signature, challenge, address, ... }
+  Y-->>FE: jwt_token { session_key, jwt_token, expires_at }
+
+  FE->>BE: Connect via WebSocket (ws://localhost:8080/ws)
+  FE->>BE: yellow_auth { jwt_token, session_key }
+  BE->>BE: ValidateToken() and create session
+  BE-->>FE: yellow_auth_success
+
+  FE-->>User: ✅ Authenticated — can start trading
+```
+
+
+
+
 
 ---
 
-## 🔧 Yellow SDK Integration
+## 5.  Yellow SDK Integration
 
-### 1. Session-Based Authentication
+
+
+## 5.1 Session-Based Authentication
 
 ```typescript
 // EIP-712 signature for session creation
@@ -42,7 +85,9 @@ const signer = createEIP712AuthMessageSigner(walletClient, authParams, { name: '
 const verifyMsg = await createAuthVerifyMessageFromChallenge(signer, challenge);
 ```
 
-### 2. Off-Chain Order Matching
+
+
+### 5.2. Off-Chain Order Matching
 
 ```go
 // Every matched trade updates the state channel
@@ -51,15 +96,18 @@ func (s *Server) updateYellowSession(ctx context.Context, marketID string) {
 }
 ```
 
-### 3. State Channel Updates
+### 5.3  State Channel Updates
 
 - All trades update off-chain state via Yellow WebSocket
 - Signed state includes: version, allocations, app data
 - Settlement happens on-chain when user closes session
+  
 
 ---
 
-## 📁 Project Structure
+
+
+##  6. Project Structure
 
 ```
 orderbooktrade-yellow/
@@ -79,40 +127,11 @@ orderbooktrade-yellow/
 └── yellow-client/          # SDK test scripts
 ```
 
----
 
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+
-- Go 1.21+
-- MetaMask wallet
-
-### 1. Backend
-
-```bash
-cd orderbook-backend
-cp .env.example .env  # Add your PRIVATE_KEY
-go run cmd/server/main.go
-```
-
-### 2. Frontend
-
-```bash
-cd orderbook-frontend
-npm install
-npm run dev
-```
-
-### 3. Open http://localhost:3000
-
-1. Connect MetaMask → Sepolia testnet
-2. Click "Connect Yellow" → Sign EIP-712 message
-3. Create demo market → Place orders → Trade!
 
 ---
 
-## 🛠️ Tech Stack
+## 7.Tech Stack
 
 | Layer | Technology |
 |-------|------------|
@@ -121,26 +140,14 @@ npm run dev
 | Yellow SDK | @erc7824/nitrolite, EIP-712, State Channels |
 | Blockchain | EVM-compatible, Sepolia testnet |
 
----
 
-## 📊 Key Features
-
-- **Zero-gas trading**: Unlimited off-chain trades within session
-- **Real-time orderbook**: WebSocket-powered live updates
-- **Price-time priority**: Professional FIFO matching algorithm
-- **Prediction markets**: YES/NO token pairs with constraint (YES + NO = 1 USDC)
-- **Trustless settlement**: On-chain finalization via Nitrolite protocol
 
 ---
 
-## 🔗 Links
+## 8. Links
 
-- [Demo](https://orderbooktrade-yellow-app.vercel.app/)
+- [Repo Link](https://github.com/OrderBookTrade/orderbooktrade-yellow)
+- [Demo Website ](https://orderbooktrade-yellow-app.vercel.app/)
 - [Yellow Network](https://yellow.org)
 - [Nitrolite Protocol](https://github.com/erc7824/nitrolite)
 
----
-
-## 📄 License
-
-MIT
