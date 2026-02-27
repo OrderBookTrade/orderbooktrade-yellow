@@ -53,8 +53,8 @@ export default function Home() {
       tomorrow.setDate(tomorrow.getDate() + 1);
 
       const market = await createMarket({
-        question: 'Will ETH be above $3000 by end of day?',
-        description: 'Prediction market demo for EthGlobal - HackMoney hackathon',
+        question: 'Will ETH be above $3000 by end of Month ?',
+        description: 'Prediction market demo for Yellow Acceleration',
         resolves_at: tomorrow.toISOString(),
         creator_id: address || 'demo',
       });
